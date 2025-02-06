@@ -48,7 +48,7 @@ def main(args: Args):
     # Load camera data
     (
         c2ws, proj_mat, fov, focal, near, far, img_width, img_height
-    ) = load_camera(device)
+    ) = load_camera_params(device)
     print("Loaded Camera Data.")
 
     # Initialize renderer
@@ -88,7 +88,7 @@ def main(args: Args):
         img = img.permute(2, 0, 1)
         tvu.save_image(img, out_path)
 
-def load_camera(device):
+def load_camera_params(device):
     camera_poses = np.load("./data/cam_data.npz")
     c2ws = camera_poses["poses"]
     img_height, img_width = int(camera_poses["height"]), int(camera_poses["width"])

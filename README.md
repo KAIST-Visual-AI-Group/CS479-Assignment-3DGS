@@ -16,7 +16,7 @@
 </div>
 
 <div align=center>
-  <img src="./media/nerf_blender/lego.gif" width="400" />
+  <img src="./media/teaser.gif" width="400" />
 </div>
 
 #### Due: TBD, 23:59 KST
@@ -41,11 +41,8 @@ As in our previous assignment on NeRF, we strongly encourage you to review the p
 - [Code Structure](#code-structure)
 - [Tasks](#tasks)
   - [Task 0. Download Data](#task-0-download-data)
-  - [Task 1. Implementing MLP](#task-1-implementing-mlp)
-  - [Task 2. Implementing Ray Sampling](#task-2-implementing-ray-sampling)
-  - [Task 3. Implementing Volume Rendering Equation](#task-3-implementing-volume-rendering-equation)
+  - [Task 1.]()
   - [Task 4. Qualitative \& Quantitative Evaluation](#task-4-qualitative--quantitative-evaluation)
-  - [(Optional) Task 5. Train NeRF with Your Own Data](#optional-task-5-train-nerf-with-your-own-data)
 - [What to Submit](#what-to-submit)
 - [Grading](#grading)
 - [Further Readings](#further-readings)
@@ -79,61 +76,23 @@ By default, the configuration is set to render `lego` scene. You can select diff
 ```
 python render.py
 ```
-All by-products produced during each run, including TensorBoard logs, will be saved under an experiment directory under `outputs`. This is automatically done by [Hydra](https://hydra.cc), the library we use for managing our config files. Refer to [the official documentation](https://hydra.cc/docs/intro/) for examples and APIs.
+For now, running this command will result in an error, as the Gaussian Splat files have not been downloaded yet.  
 
-**We highly encourage you to try out multiple seeds as the performance of neural networks is often sensitive to the initialization.**
-The function `init_torch` that sets the random seed for PyTorch is located at `torch_nerf/runners/utils.py`
+All by-products made during rendering, including images, videos, and evaluation results, will be saved in an experiment directory under `outputs/{SCENE NAME}`.
 
-> :bulb: **Each run takes approximately 2 hours on a single NVIDIA RTX 3090 GPU and consumes around 10 GB of VRAM.**
-
-After training NeRF, it can be rendered using the script `render.py.`
-To do so, provide the experiment directory created when running the training script. For instance,
-```
-python torch_nerf/runners/render.py +log_dir=outputs/2023-06-27/00-10-15 +render_test_views=False
-```
-The Boolean flag `render_test_views` determines whether to render the trained scene from the viewpoints held out for testing. We will come back to this when discussing quantitative evaluation.
 
 ## Code Structure
 This codebase is organized as the following directory tree. We only list the core components for brevity:
 ```
-torch_nerf
+gs_renderer
 │
-├── configs             <- Directory containing config files
-│
-├── runners
-│   ├── evaluate.py     <- Script for quantitative evaluation.
-│   ├── render.py       <- Script for rendering (i.e., qualitative evaluation).
-│   ├── train.py        <- Script for training.
-│   └── utils.py        <- A collection of utilities used in the scripts above.
-│
+├── data                <- Directory for data files.
 ├── src
-│   ├── cameras
-│   │   ├── cameras.py
-│   │   └── rays.py
-│   │   
-│   ├── network
-│   │   └── nerf.py
-│   │
-│   ├── renderer
-│   │   ├── integrators
-│   │   ├── ray_samplers
-│   │   └── volume_renderer.py
-│   │
-│   ├── scene
-│   │
-│   ├── signal_encoder
-│   │   ├── positional_encoder.py
-│   │   └── signal_encoder_base.py
-│   │
-│   └── utils
-│       ├── data
-│       │   ├── blender_dataset.py
-│       │   └── load_blender.py
-│       │
-│       └── metrics
-│           └── rgb_metrics.py
-│
-├── requirements.txt    <- Dependency configuration file.
+│   ├── camera.py       <- A light-weight data class for storing camera parameters.
+│   ├── renderer.py     <- Main renderer implementation.
+│   ├── scene.py        <- A light-weight data class for storing Gaussian Splat parameters.
+│   └── sh.py           <- A utility for processing Spherical Harmonic coefficients.
+├── render.py           <- Main script for rendering.
 └── README.md           <- This file.
 ```
 
@@ -141,77 +100,23 @@ torch_nerf
 
 ### Task 0. Download Data
 
-Download the file `lego.zip` from [here](https://drive.google.com/file/d/1EitqzKZLptJop82hdNqu1YCogxgNgN5u/view?usp=share_link) and extract it under directory `data/nerf_synthetic`. The training script expects the data to be located under `data/nerf_synthetic/lego`.
-
-> :bulb: `scp` is a handy tool for transferring files between local and remote servers. Check [this link](https://haydenjames.io/linux-securely-copy-files-using-scp/) for examples.
-
-### Task 1. Implementing MLP
-<p align="middle">
-  <img src="./media/nerf_mlp.png" width="800" />
-</p>
-
-```bash
-#! files-to-modify
-$ torch_nerf/src/network/nerf.py
+Download the scene files (`data.zip`) from [here](https://drive.google.com/file/d/16z6kmnPgvPN-HVu0TpCloxvygUrjCzu6/view?usp=sharing) and extract them into the root directory.
+After extraction, the `data` directory should be structured as follows:
 ```
-Implement the MLP displayed above. The network consists of:
-
-1. One input fully-connected layer;
-2. Nine fully-connected layers (including the one for skip connection);
-3. One output fully-connected layer.
-
-All hidden layers are followed by ReLU activation, and the density and the RGB head at the output layer are followed by ReLU and sigmoid activations, respectively.
-For more details, please refer to Sec. A of the paper's supplementary material.
-
-> :bulb: We highly recommend you to look up [the official documentation](https://pytorch.org/docs/stable/nn.html) of the layers used in the network.
-
-### Task 2. Implementing Ray Sampling
-```bash
-#! files-to-modify
-$ torch_nerf/src/cameras/rays.py
-$ torch_nerf/src/renderer/ray_samplers/stratified_sampler.py
-```
-This task consists of two sub-tasks:
-
-1. Implement the body of function `compute_sample_coordinates` in `torch_nerf/src/cameras/rays.py`.
-This function will be used to evaluate the coordinates of points along rays cast from image pixels.
-For a ray $r$ parameterized by the origin $\mathbf{o}$ and direction $\mathbf{d}$ (not necessarily a unit vector), a point on the ray can be computed by
-
-```math
-r(t) = \mathbf{o} + t \mathbf{d},
-```
-where $t \in [t_n, t_f]$ is bounded by the near bound $t_n$ and the far bound $t_f$, respectively.
-
-2. Implement the body of function `sample_along_rays_uniform` in `torch_nerf/src/renderer/ray_samplers/stratified_sampler.py`.
-The function implements the stratified sampling illustrated in the following equation (Eqn 2. in the paper).
-
-```math
-t_i \sim \mathcal{U} \left[ t_n + \frac{i-1}{N} \left( t_f - t_n \right), t_n + \frac{i}{N} \left( t_f - t_n \right) \right].
+data
+│
+├── cam_data.npz        <- Camera parameters.
+├── chair.ply           <- "Chair" Scene.
+├── drums.ply           <- "Drums" Scene.
+├── ficus.ply           <- "Ficus" Scene.
+├── hotdog.ply          <- "Hotdog" Scene.
+├── lego.ply            <- "Lego" Scene.
+├── materials.ply       <- "Materials" Scene.
+├── mic.ply             <- "Mic" Scene.
+└── ship.ply            <- "Ship" Scene.
 ```
 
-> :bulb: Check out the helper functions [`create_t_bins`](https://github.com/KAIST-Geometric-AI-Group/CS479-Assignment-2/blob/main/torch_nerf/src/renderer/ray_samplers/stratified_sampler.py#L110) and [`map_t_to_euclidean`](https://github.com/KAIST-Geometric-AI-Group/CS479-Assignment-2/blob/main/torch_nerf/src/renderer/ray_samplers/stratified_sampler.py#L97) while implementing function `sample_along_rays_uniform`. Also, you may find [`torch.rand_like`](https://pytorch.org/docs/stable/generated/torch.rand_like.html) useful when generating random numbers for sampling.
-
-> :bulb: Note that all rays in a ray bundle share the same near and far bounds. Although function `map_t_to_euclidean` takes only `float` as its arguments `near` and `far`, it is not necessary to loop over all rays individually.
-
-### Task 3. Implementing Volume Rendering Equation
-```bash
-#! files-to-modify
-$ torch_nerf/src/renderer/integrators/quadrature_integrator.py
-```
-This task consists of one sub-task:
-
-1. Implement the body of function `integrate_along_rays`.
-The function implements Eqn. 3 in the paper which defines a pixel color as a weighted sum of radiance values collected along a ray:
-
-```math
-\hat{C} \left( r \right) = \sum_{i=1}^T T_i \left( 1 - \exp \left( -\sigma_i \delta_i \right) \right) \mathbf{c}_i,
-```
-where 
-```math
-T_i = \exp \left( - \sum_{j=1}^{i-1} \sigma_j \delta_j \right).
-```
-
-> :bulb: The PyTorch APIs [`torch.exp`](https://pytorch.org/docs/stable/generated/torch.exp.html?highlight=exp#torch.exp), [`torch.cumsum`](https://pytorch.org/docs/stable/generated/torch.cumsum.html?highlight=cumsum#torch.cumsum), and [`torch.sum`](https://pytorch.org/docs/stable/generated/torch.sum.html?highlight=sum#torch.sum) might be useful when implementing the quadrature integration.
+### Task 1.
 
 ### Task 4. Qualitative \& Quantitative Evaluation
 
@@ -240,11 +145,6 @@ The metrics measured after training the network for 50k iterations on the `lego`
 | 0.0481 | 28.9258 | 0.9473 |
 
 > :bulb: **For details on grading, refer to section [Evaluation Criteria](#evaluation-criteria).**
-
-### (Optional) Task 5. Train NeRF with Your Own Data
-
-Instead of using the provided dataset, capture your surrounding environment and use the data for training.
-[COLMAP](https://github.com/colmap/colmap) might be useful when computing the relative camera poses.
 
 ## What to Submit
 
