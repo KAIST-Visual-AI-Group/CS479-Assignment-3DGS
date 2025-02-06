@@ -16,7 +16,7 @@
 </div>
 
 <div align=center>
-  <img src="./media/teaser.gif" width="400" />
+  <img src="./media/teaser.gif" width="400"/>
 </div>
 
 #### Due: TBD, 23:59 KST
@@ -50,6 +50,11 @@ As in our previous assignment on NeRF, we strongly encourage you to review the p
 
 ## Setup
 
+To get started, clone this repository first.
+```
+git clone --recursive {PROJECT_URL}
+```
+
 We recommend creating a virtual environment using `conda`.
 To create a `conda` environment, issue the following command:
 ```
@@ -59,12 +64,13 @@ This should create a basic environment with Python 3.10 installed.
 Next, activate the environment and install the dependencies using `pip`:
 ```
 conda activate cs479-gs
-pip install -r requirements.txt
 ```
 The remaining dependencies are the ones related to PyTorch and they can be installed with the command:
 ```
 pip install torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cu124
 pip install torchmetrics[image]
+pip install imageio[ffmpeg]
+pip install simple-knn/.
 ```
 
 Register the project root directory (i.e., `gs_renderer`) as an environment variable to help the Python interpreter search our files.
