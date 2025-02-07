@@ -5,7 +5,6 @@ The implementation is based on torch-splatting: https://github.com/hbb1/torch-sp
 """
 
 import math
-import gsplat
 import torch
 
 
@@ -35,7 +34,7 @@ class GSRasterizer(object):
         # Retrieve camera pose (extrinsic)
         R = camera.camera_to_world[:3, :3]  # 3 x 3
         T = camera.camera_to_world[:3, 3:4]  # 3 x 1
-        # flip the z and y axes to align with gsplat conventions
+        # flip the z and y axes to align with OpenCV convention
         R_edit = torch.diag(torch.tensor([1, -1, -1], device=R.device, dtype=R.dtype))
         R = R @ R_edit
         R_inv = R.T
