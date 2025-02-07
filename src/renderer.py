@@ -18,23 +18,30 @@ class GSRasterizer(object):
     Gaussian Splat Rasterizer.
     """
 
-    def __init__(self, active_sh_degree):
+    def __init__(self):
 
-        self.active_sh_degree = active_sh_degree
+        self.sh_degree = 3
         self.white_bkgd = True
 
     def render_scene(self, scene: Scene, camera: Camera):
-        
+
+        # Retrieve Gaussian parameters
         mean_3d = scene.mean_3d
         scales = scene.scales
         rotations = scene.rotations
         shs = scene.shs
         opacities = scene.opacities
         
+        # ============================================================================
+        # Process camera parameters
+        # NOTE: We transpose both camera extrinsic and projection matrices
+        # assuming that these transforms are applied to points in row vector format.
+        # NOTE: Do NOT modify this block, unless you are well-aware of differences between
+        # coordinate system conventions.
+
         # Retrieve camera pose (extrinsic)
         R = camera.camera_to_world[:3, :3]  # 3 x 3
         T = camera.camera_to_world[:3, 3:4]  # 3 x 1
-        # flip the z and y axes to align with OpenCV convention
         R_edit = torch.diag(torch.tensor([1, -1, -1], device=R.device, dtype=R.dtype))
         R = R @ R_edit
         R_inv = R.T
@@ -44,11 +51,14 @@ class GSRasterizer(object):
         world_to_camera[:3, 3:4] = T_inv
         world_to_camera = world_to_camera.permute(1, 0)
 
+        # Retrieve camera intrinsic
         proj_mat = camera.proj_mat.permute(1, 0)
         world_to_camera = world_to_camera.to(mean_3d.device)
         proj_mat = proj_mat.to(mean_3d.device)
+        # ============================================================================
 
-        mean_ndc, mean_view, in_mask = projection_ndc(
+        # Project to NDC
+        mean_ndc, mean_view, in_mask = self.project_ndc(
             mean_3d,
             viewmatrix=world_to_camera, 
             projmatrix=proj_mat,
@@ -59,26 +69,30 @@ class GSRasterizer(object):
         assert mean_view.shape[0] > 0, "No points in the frustum"
         depths = mean_view[:, 2]
 
-        color = self.build_color(means3D=mean_3d, shs=shs, camera=camera)
-        
-        cov3d = build_covariance_3d(scales, rotations)
+        # Compute RGB from spherical harmonics
+        color = self.get_rgb_from_sh(mean_3d, shs, camera)
 
-        cov2d = build_covariance_2d(
-            mean3d=mean_3d, 
+        # Compute 3D covariance matrix
+        cov3d = self.build_covariance_3d(scales, rotations)
+
+        # Project covariance matrices to 2D
+        cov2d = self.build_covariance_2d(
+            mean_3d=mean_3d, 
             cov3d=cov3d, 
-            # viewmatrix=camera.world_view_transform,
-            viewmatrix=world_to_camera,
+            w2c=world_to_camera,
             fov_x=camera.fov_x, 
             fov_y=camera.fov_y, 
-            focal_x=camera.f_x, 
-            focal_y=camera.f_y)
+            f_x=camera.f_x, 
+            f_y=camera.f_y)
+        
+        # Compute pixel space coordinates of projected Gaussians
         mean_coord_x = ((mean_ndc[..., 0] + 1) * camera.image_width - 1.0) * 0.5
         mean_coord_y = ((mean_ndc[..., 1] + 1) * camera.image_height - 1.0) * 0.5
-        means2D = torch.stack([mean_coord_x, mean_coord_y], dim=-1)
+        mean_2d = torch.stack([mean_coord_x, mean_coord_y], dim=-1)
 
         rets = self.render(
             camera = camera, 
-            means2D=means2D,
+            mean_2d=mean_2d,
             cov2d=cov2d,
             color=color,
             opacity=opacities, 
@@ -91,18 +105,70 @@ class GSRasterizer(object):
 
         return color, depth, alpha
 
-    def build_color(self, means3D, shs, camera):
+    @torch.no_grad()
+    def get_rgb_from_sh(self, mean_3d, shs, camera):
         rays_o = camera.cam_center        
-        rays_d = means3D - rays_o
-        rays_d = rays_d / torch.norm(rays_d, dim=-1, keepdim=True)  # NOTE: Need to normalize this vector!
-        color = eval_sh(self.active_sh_degree, shs.permute(0,2,1), rays_d)        
-        color = (color + 0.5).clip(min=0.0)
+        rays_d = mean_3d - rays_o
+        rays_d = rays_d / torch.norm(rays_d, dim=-1, keepdim=True)
+        color = eval_sh(self.sh_degree, shs.permute(0, 2, 1), rays_d)
+        color = torch.clamp_min(color + 0.5, 0.0)
         return color
     
-    def render(self, camera, means2D, cov2d, color, opacity, depths):
+    @torch.no_grad()
+    def project_ndc(self, points, viewmatrix, projmatrix):
+        points_o = homogenize(points) # object space
+        points_h = points_o @ viewmatrix @ projmatrix # screen space # RHS
+        p_w = 1.0 / (points_h[..., -1:] + 0.000001)
+        p_proj = points_h * p_w
+        p_view = points_o @ viewmatrix
+        
+        in_mask = p_view[..., 2] >= 0.01
+
+        return p_proj, p_view, in_mask
+
+    @torch.no_grad()
+    def build_covariance_3d(self, s, r):
+        L = build_scaling_rotation(s, r)
+        cov3d = L @ L.transpose(1, 2)
+        return cov3d
+
+    @torch.no_grad()
+    def build_covariance_2d(
+        self, mean_3d, cov3d, w2c, fov_x, fov_y, f_x, f_y
+    ):
+        # The following models the steps outlined by equations 29
+        # and 31 in "EWA Splatting" (Zwicker et al., 2002). 
+        # Additionally considers aspect / scaling of viewport.
+        # Transposes used to account for row-/column-major conventions.
+        tan_fovx = math.tan(fov_x * 0.5)
+        tan_fovy = math.tan(fov_y * 0.5)
+        t = (mean_3d @ w2c[:3,:3]) + w2c[-1:,:3]
+
+        # truncate the influences of gaussians far outside the frustum.
+        tx = (t[..., 0] / t[..., 2]).clip(min=-tan_fovx*1.3, max=tan_fovx*1.3) * t[..., 2]
+        ty = (t[..., 1] / t[..., 2]).clip(min=-tan_fovy*1.3, max=tan_fovy*1.3) * t[..., 2]
+        tz = t[..., 2]
+
+        # Eq.29 locally affine transform 
+        # perspective transform is not affine so we approximate with first-order taylor expansion
+        # notice that we multiply by the intrinsic so that the variance is at the sceen space
+        J = torch.zeros(mean_3d.shape[0], 3, 3).to(mean_3d)
+        J[..., 0, 0] = 1 / tz * f_x
+        J[..., 0, 2] = -tx / (tz * tz) * f_x
+        J[..., 1, 1] = 1 / tz * f_y
+        J[..., 1, 2] = -ty / (tz * tz) * f_y
+        W = w2c[:3,:3].T # transpose to correct viewmatrix
+        cov2d = J @ W @ cov3d @ W.T @ J.permute(0,2,1)
+        
+        # add low pass filter here according to E.q. 32
+        filter = torch.eye(2,2).to(cov2d) * 0.3
+        return cov2d[:, :2, :2] + filter[None]
+
+    @torch.no_grad()
+    def render(self, camera, mean_2d, cov2d, color, opacity, depths):
 
         radii = get_radius(cov2d)
-        rect = get_rect(means2D, radii, width=camera.image_width, height=camera.image_height)
+        rect = get_rect(mean_2d, radii, width=camera.image_width, height=camera.image_height)
 
         pix_coord = torch.stack(
             torch.meshgrid(torch.arange(camera.image_height), torch.arange(camera.image_width), indexing='xy'),
@@ -129,7 +195,7 @@ class GSRasterizer(object):
 
                 tile_coord = pix_coord[h:h+TILE_SIZE, w:w+TILE_SIZE].flatten(0,-2)
                 sorted_depths, index = torch.sort(depths[in_mask])
-                sorted_means2D = means2D[in_mask][index]
+                sorted_means2D = mean_2d[in_mask][index]
                 sorted_cov2d = cov2d[in_mask][index] # P 2 2
                 sorted_conic = sorted_cov2d.inverse() # inverse of variance
                 sorted_opacity = opacity[in_mask][index]
@@ -161,18 +227,15 @@ class GSRasterizer(object):
             "radii": radii
         }
 
-####
-def inverse_sigmoid(x):
-    return torch.log(x/(1-x))
-
-def homogeneous(points):
+@torch.no_grad()
+def homogenize(points):
     """
     homogeneous points
     :param points: [..., 3]
     """
     return torch.cat([points, torch.ones_like(points[..., :1])], dim=-1)
 
-
+@torch.no_grad()
 def build_rotation(r):
     norm = torch.sqrt(r[:,0]*r[:,0] + r[:,1]*r[:,1] + r[:,2]*r[:,2] + r[:,3]*r[:,3])
 
@@ -196,8 +259,7 @@ def build_rotation(r):
     R[:, 2, 2] = 1 - 2 * (x*x + y*y)
     return R
 
-
-
+@torch.no_grad()
 def build_scaling_rotation(s, r):
     L = torch.zeros((s.shape[0], 3, 3), dtype=torch.float, device="cuda")
     R = build_rotation(r)
@@ -208,78 +270,6 @@ def build_scaling_rotation(s, r):
 
     L = R @ L
     return L
-
-
-def strip_lowerdiag(L):
-    uncertainty = torch.zeros((L.shape[0], 6), dtype=torch.float, device="cuda")
-    uncertainty[:, 0] = L[:, 0, 0]
-    uncertainty[:, 1] = L[:, 0, 1]
-    uncertainty[:, 2] = L[:, 0, 2]
-    uncertainty[:, 3] = L[:, 1, 1]
-    uncertainty[:, 4] = L[:, 1, 2]
-    uncertainty[:, 5] = L[:, 2, 2]
-    return uncertainty
-
-
-def strip_symmetric(sym):
-    return strip_lowerdiag(sym)
-
-
-
-def build_covariance_3d(s, r):
-    L = build_scaling_rotation(s, r)
-    actual_covariance = L @ L.transpose(1, 2)
-    return actual_covariance
-    # symm = strip_symmetric(actual_covariance)
-    # return symm
-
-
-
-def build_covariance_2d(
-    mean3d, cov3d, viewmatrix, fov_x, fov_y, focal_x, focal_y
-):
-    # The following models the steps outlined by equations 29
-	# and 31 in "EWA Splatting" (Zwicker et al., 2002). 
-	# Additionally considers aspect / scaling of viewport.
-	# Transposes used to account for row-/column-major conventions.
-    tan_fovx = math.tan(fov_x * 0.5)
-    tan_fovy = math.tan(fov_y * 0.5)
-    t = (mean3d @ viewmatrix[:3,:3]) + viewmatrix[-1:,:3]
-
-    # truncate the influences of gaussians far outside the frustum.
-    tx = (t[..., 0] / t[..., 2]).clip(min=-tan_fovx*1.3, max=tan_fovx*1.3) * t[..., 2]
-    ty = (t[..., 1] / t[..., 2]).clip(min=-tan_fovy*1.3, max=tan_fovy*1.3) * t[..., 2]
-    tz = t[..., 2]
-
-    # Eq.29 locally affine transform 
-    # perspective transform is not affine so we approximate with first-order taylor expansion
-    # notice that we multiply by the intrinsic so that the variance is at the sceen space
-    J = torch.zeros(mean3d.shape[0], 3, 3).to(mean3d)
-    J[..., 0, 0] = 1 / tz * focal_x
-    J[..., 0, 2] = -tx / (tz * tz) * focal_x
-    J[..., 1, 1] = 1 / tz * focal_y
-    J[..., 1, 2] = -ty / (tz * tz) * focal_y
-    # J[..., 2, 0] = tx / t.norm(dim=-1) # discard
-    # J[..., 2, 1] = ty / t.norm(dim=-1) # discard
-    # J[..., 2, 2] = tz / t.norm(dim=-1) # discard
-    W = viewmatrix[:3,:3].T # transpose to correct viewmatrix
-    cov2d = J @ W @ cov3d @ W.T @ J.permute(0,2,1)
-    
-    # add low pass filter here according to E.q. 32
-    filter = torch.eye(2,2).to(cov2d) * 0.3
-    return cov2d[:, :2, :2] + filter[None]
-
-
-def projection_ndc(points, viewmatrix, projmatrix):
-    points_o = homogeneous(points) # object space
-    points_h = points_o @ viewmatrix @ projmatrix # screen space # RHS
-    p_w = 1.0 / (points_h[..., -1:] + 0.000001)
-    p_proj = points_h * p_w
-    p_view = points_o @ viewmatrix
-    
-    in_mask = p_view[..., 2] >= 0.2
-
-    return p_proj, p_view, in_mask
 
 @torch.no_grad()
 def get_radius(cov2d):
@@ -298,4 +288,3 @@ def get_rect(pix_coord, radii, width, height):
     rect_max[..., 0] = rect_max[..., 0].clip(0, width - 1.0)
     rect_max[..., 1] = rect_max[..., 1].clip(0, height - 1.0)
     return rect_min, rect_max
-####

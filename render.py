@@ -52,7 +52,7 @@ def main(args: Args):
     print("Loaded Camera Data.")
 
     # Initialize renderer
-    renderer = GSRasterizer(active_sh_degree=3)
+    renderer = GSRasterizer()
     print("Initialized Renderer.")
 
     # Render images
@@ -98,7 +98,7 @@ def load_camera_params(device):
     focal *= 2
     near = 1e-2
     far = 10.0
-    fov = focal2fov(focal, img_width)
+    fov = convert_focal_to_fov(focal, img_width)
     proj_mat = compute_proj_mat(near, far, fov, fov)
     return c2ws, proj_mat, fov, focal, near, far, img_width, img_height
 
@@ -175,11 +175,8 @@ def load_ply(path):
 
     return xyz, shs, opacities, scales, rots
 
-def focal2fov(focal, pixels):
-    return 2.0 * torch.atan(pixels/(2*focal))
-
-def fov2focal(fov, pixels):
-    return pixels / (2.0 * torch.tan(fov / 2.0))
+def convert_focal_to_fov(f, num_pixel):
+    return 2.0 * torch.atan(num_pixel/(2*f))
 
 def compute_inverse_pose(pose):
     R = pose[:3, :3]
@@ -202,14 +199,12 @@ def compute_proj_mat(near, far, fov_x, fov_y):
 
     proj_mat = torch.zeros(4, 4).to(fov_x.device)
 
-    z_sign = 1.0
-
     proj_mat[0, 0] = 2.0 * near / (right - left)
     proj_mat[1, 1] = 2.0 * near / (top - bottom)
     proj_mat[0, 2] = (right + left) / (right - left)
     proj_mat[1, 2] = (top + bottom) / (top - bottom)
-    proj_mat[3, 2] = z_sign
-    proj_mat[2, 2] = z_sign * far / (far - near)
+    proj_mat[3, 2] = 1.0
+    proj_mat[2, 2] = far / (far - near)
     proj_mat[2, 3] = -(far * near) / (far - near)
     
     return proj_mat
@@ -217,5 +212,5 @@ def compute_proj_mat(near, far, fov_x, fov_y):
 
 if __name__ == "__main__":
     main(
-        tyro.cli(Args, )
+        tyro.cli(Args)
     )
