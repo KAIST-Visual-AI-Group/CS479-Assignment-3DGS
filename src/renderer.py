@@ -218,8 +218,6 @@ class GSRasterizer(object):
         ).to(mean_2d.device)
         
         render_color = torch.ones(*pix_coord.shape[:2], 3).to(mean_2d.device)
-        render_depth = torch.zeros(*pix_coord.shape[:2], 1).to(mean_2d.device)
-        render_alpha = torch.zeros(*pix_coord.shape[:2], 1).to(mean_2d.device)
 
         assert camera.image_height % self.tile_size == 0, "Image height must be divisible by the tile_size."
         assert camera.image_width % self.tile_size == 0, "Image width must be divisible by the tile_size."
