@@ -150,9 +150,9 @@ Then, divide the first three components of $\mathbf{p}_{\text{ndc}}$ by the four
 \tilde{\mathbf{p}} = \frac{\mathbf{p}_{\text{proj}}}{\mathbf{p}_{\text{proj}, w}}
 ```
 
-where $\mathbf{p}_{\text{proj}, w}$ is the fourth component of $\mathbf{p}_{\text{proj}}$.
+where $\mathbf{p}\_{\text{proj}, w}$ is the fourth component of $\mathbf{p}\_{\text{proj}}$.
 
-Lastly, compute the binary mask indicating the points that are behind the near plane by checking whether the $z$-coordinate of $\mathbf{p}_{\text{view}}$ is greater than $z_{\text{near}}$.
+Lastly, compute the binary mask indicating the points that are behind the near plane by checking whether the $z$-coordinate of $\mathbf{p}\_{\text{view}}$ is greater than $z\_{\text{near}}$.
 
 > [!IMPORTANT]
 > Refer to the method signature and docstring for input and output specifications.
@@ -173,23 +173,21 @@ Specifically, we can use the Jacobian matrix $\mathbf{J}$ of form:
 \end{bmatrix},
 ```
 
-where $f_x$ and $f_y$ are the focal lengths, and $t_x$, $t_y$, and $t_z$ are the center coordinates of 3D Gaussians in the camera space.
-We have already provided a tensor `J` filled with zeros of the correct shape. You need to fill in the correct values in the tensor.
+where $f\_x$ and $f\_y$ are the focal lengths, and $t\_x$, $t\_y$, and $t\_z$ represent the center coordinates of the 3D Gaussians in camera space.
+We provide a tensor `J` initialized with zeros of the correct shape. You need to fill in the correct values in the tensor.
 
-Next, compute the covariance matrix in the image plane by projecting the covariance matrix in the world space using the Jacobian matrix:
+Next, compute the covariance matrix in the image plane by projecting the world-space covariance matrix using the Jacobian matrix:
 
 ```math
 \boldsymbol{\Sigma}_{\text{2D}} = \mathbf{J} \mathbf{W} \boldsymbol{\Sigma}_{\text{3D}} \mathbf{W}^T \mathbf{J}^T
 ```
 
-where $\mathbf{W}$ is the rigid transformation matrix from the camera space to the world space.
+where $\mathbf{W}$ is the rigid transformation componenet of the camera space to world space transformation.
 
 > [!IMPORTANT]
 > Refer to the method signature and docstring for input and output specifications.
 
 ### Task 3. Volume Rendering of Projected Splats
-
-
 
 > [!IMPORTANT]
 > Refer to the method signature and docstring for input and output specifications.
