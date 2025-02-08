@@ -130,20 +130,26 @@ data
 Implement the coordinate transformation from world space to normalized device coordinates (NDC) in the `project_ndc` method of `renderer.py`.  
 
 Given a homogeneous coordinate $\mathbf{p}$, performing the following matrix multiplication yields the coordinate of the point in the view space:
-$$
+
+```math
 \mathbf{p}_{\text{view}} = \mathbf{p} \mathbf{V}
-$$
+```
+
 where $\mathbf{V}$ is the view matrix (world-to-camera transformation).
 
 To project the point onto the image plane, first perform the matrix multiplication
-$$
+
+```math
 \mathbf{p}_{\text{proj}} = \mathbf{p}_{\text{view}} \mathbf{P}
-$$
+```
+
 where $\mathbf{P}$ is the projection matrix (camera-to-clip transformation).
 Then, divide the first three components of $\mathbf{p}_{\text{ndc}}$ by the fourth component to obtain the normalized device coordinates:
-$$
+
+```math
 \tilde{\mathbf{p}} = \frac{\mathbf{p}_{\text{proj}}}{\mathbf{p}_{\text{proj}, w}}
-$$
+```
+
 where $\mathbf{p}_{\text{proj}, w}$ is the fourth component of $\mathbf{p}_{\text{proj}}$.
 
 Lastly, compute the binary mask indicating the points that are behind the near plane by checking whether the $z$-coordinate of $\mathbf{p}_{\text{view}}$ is greater than $z_{\text{near}}$.
@@ -158,20 +164,24 @@ Implement the projection of the covariance matrix onto the image plane in the `c
 You are only allowed to modify the code inside the block marked with `TODO` in the method.
 After transforming the centers of 3D Gaussians to the camera space, compute the Jacobian matrix of the world-to-camera and projective transformations.
 Specifically, we can use the Jacobian matrix $\mathbf{J}$ of form:
-$$
+
+```math
 \mathbf{J} = \begin{bmatrix}
   \frac{f_x}{t_z} &      0          & -\frac{f_x t_x}{t_z^2} \\
   0               & \frac{f_y}{t_z} & -\frac{f_y t_y}{t_z^2} \\
   0               &      0          & 0
 \end{bmatrix},
-$$
+```
+
 where $f_x$ and $f_y$ are the focal lengths, and $t_x$, $t_y$, and $t_z$ are the center coordinates of 3D Gaussians in the camera space.
 We have already provided a tensor `J` filled with zeros of the correct shape. You need to fill in the correct values in the tensor.
 
 Next, compute the covariance matrix in the image plane by projecting the covariance matrix in the world space using the Jacobian matrix:
-$$
+
+```math
 \boldsymbol{\Sigma}_{\text{2D}} = \mathbf{J} \mathbf{W} \boldsymbol{\Sigma}_{\text{3D}} \mathbf{W}^T \mathbf{J}^T
-$$
+```
+
 where $\mathbf{W}$ is the rigid transformation matrix from the camera space to the world space.
 
 > [!IMPORTANT]
