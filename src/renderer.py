@@ -4,7 +4,6 @@ PyTorch implementation of Gaussian Splat Rasterizer.
 The implementation is based on torch-splatting: https://github.com/hbb1/torch-splatting
 """
 
-import math
 from jaxtyping import Bool, Float, jaxtyped
 import torch
 from typeguard import typechecked
@@ -83,25 +82,22 @@ class GSRasterizer(object):
             f_y=camera.f_y,
         )
         
-        # Compute pixel space coordinates of projected Gaussians
+        # Compute pixel space coordinates of the projected Gaussian centers
         mean_coord_x = ((mean_ndc[..., 0] + 1) * camera.image_width - 1.0) * 0.5
         mean_coord_y = ((mean_ndc[..., 1] + 1) * camera.image_height - 1.0) * 0.5
         mean_2d = torch.stack([mean_coord_x, mean_coord_y], dim=-1)
 
-        rets = self.render(
-            camera = camera, 
+        color = self.render(
+            camera=camera, 
             mean_2d=mean_2d,
-            cov2d=cov_2d,
+            cov_2d=cov_2d,
             color=color,
-            opacity=opacities, 
+            opacities=opacities, 
             depths=depths,
         )
+        color = color.reshape(-1, 3)
 
-        color = rets["render"].reshape(-1, 3)
-        depth = rets["depth"].reshape(-1, 1)
-        alpha = rets["alpha"].reshape(-1, 1)
-
-        return color, depth, alpha
+        return color
 
     @torch.no_grad()
     def get_rgb_from_sh(self, mean_3d, shs, camera):
@@ -206,14 +202,14 @@ class GSRasterizer(object):
     @torch.no_grad()
     def render(
         self,
-        camera,
-        mean_2d,
-        cov2d,
-        color,
-        opacity,
-        depths,
-    ):
-        radii = get_radius(cov2d)
+        camera: Camera,
+        mean_2d: Float[torch.Tensor, "N 2"],
+        cov_2d: Float[torch.Tensor, "N 2 2"],
+        color: Float[torch.Tensor, "N 3"],
+        opacities: Float[torch.Tensor, "N 1"],
+        depths: Float[torch.Tensor, "N"],
+    ) -> Float[torch.Tensor, "H W 3"]:
+        radii = get_radius(cov_2d)
         rect = get_rect(mean_2d, radii, width=camera.image_width, height=camera.image_height)
 
         pix_coord = torch.stack(
@@ -225,47 +221,56 @@ class GSRasterizer(object):
         render_depth = torch.zeros(*pix_coord.shape[:2], 1).to(mean_2d.device)
         render_alpha = torch.zeros(*pix_coord.shape[:2], 1).to(mean_2d.device)
 
-        assert camera.image_height % self.tile_size == 0, "Image height must be divisible by self.tile_size"
-        assert camera.image_width % self.tile_size == 0, "Image width must be divisible by self.tile_size"
+        assert camera.image_height % self.tile_size == 0, "Image height must be divisible by the tile_size."
+        assert camera.image_width % self.tile_size == 0, "Image width must be divisible by the tile_size."
         for h in range(0, camera.image_height, self.tile_size):
             for w in range(0, camera.image_width, self.tile_size):
                 # check if the rectangle penetrate the tile
                 over_tl = rect[0][..., 0].clip(min=w), rect[0][..., 1].clip(min=h)
                 over_br = rect[1][..., 0].clip(max=w+self.tile_size-1), rect[1][..., 1].clip(max=h+self.tile_size-1)
-                in_mask = (over_br[0] > over_tl[0]) & (over_br[1] > over_tl[1]) # 3D gaussian in the tile 
-
+                
+                # a binary mask indicating projected Gaussians that lie in the current tile
+                in_mask = (over_br[0] > over_tl[0]) & (over_br[1] > over_tl[1])
                 if not in_mask.sum() > 0:
                     continue
 
-                P = in_mask.sum()
-
-                tile_coord = pix_coord[h:h + self.tile_size, w:w + self.tile_size].flatten(0,-2)
+                # ========================================================
+                # TODO: Sort the projected Gaussians that lie in the current tile by their depths, in ascending order
                 sorted_depths, index = torch.sort(depths[in_mask])
-                sorted_means2D = mean_2d[in_mask][index]
-                sorted_cov2d = cov2d[in_mask][index] # P 2 2
-                sorted_conic = sorted_cov2d.inverse() # inverse of variance
-                sorted_opacity = opacity[in_mask][index]
+                sorted_mean_2d = mean_2d[in_mask][index]
+                sorted_cov_2d = cov_2d[in_mask][index] # P 2 2
+                sorted_cov_2d_inv = sorted_cov_2d.inverse() # inverse of variance
+                sorted_opacities = opacities[in_mask][index]
                 sorted_color = color[in_mask][index]
-                dx = (tile_coord[:,None,:] - sorted_means2D[None,:]) # B P 2
-                assert dx.shape == (self.tile_size*self.tile_size, P, 2)
-
-                gauss_weight = torch.exp(-0.5 * (
-                    dx[:, :, 0]**2 * sorted_conic[:, 0, 0] 
-                    + dx[:, :, 1]**2 * sorted_conic[:, 1, 1]
-                    + dx[:,:,0]*dx[:,:,1] * sorted_conic[:, 0, 1]
-                    + dx[:,:,0]*dx[:,:,1] * sorted_conic[:, 1, 0]))
+                # ========================================================
                 
-                alpha = (gauss_weight[..., None] * sorted_opacity[None]).clip(max=0.99) # B P 1
+                # ========================================================
+                # TODO: Compute the displacement vector from the 2D mean coordinates to the pixel coordinates
+                tile_coord = pix_coord[h:h + self.tile_size, w:w + self.tile_size].flatten(0,-2)
+                dx = (tile_coord[:,None,:] - sorted_mean_2d[None,:]) # B P 2
+                assert dx.shape == (self.tile_size*self.tile_size, in_mask.sum(), 2)
+                # ========================================================
+
+                # ========================================================
+                # TODO: Compute the Gaussian weight for each pixel in the tile
+                gauss_weight = torch.exp(-0.5 * (
+                    dx[:, :, 0]**2 * sorted_cov_2d_inv[:, 0, 0]
+                    + dx[:, :, 1]**2 * sorted_cov_2d_inv[:, 1, 1]
+                    + dx[:, :, 0] * dx[:, :, 1] * (sorted_cov_2d_inv[:, 0, 1] * sorted_cov_2d_inv[:, 1, 0]))
+                )
+                # ========================================================
+
+                # ========================================================
+                # TODO: Perform alpha blending
+                alpha = (gauss_weight[..., None] * sorted_opacities[None]).clip(max=0.99) # B P 1
                 T = torch.cat([torch.ones_like(alpha[:,:1]), 1-alpha[:,:-1]], dim=1).cumprod(dim=1)
                 acc_alpha = (alpha * T).sum(dim=1)
                 tile_color = (T * alpha * sorted_color[None]).sum(dim=1) + (1-acc_alpha) * (1 if self.white_bkgd else 0)
-                tile_depth = ((T * alpha) * sorted_depths[None,:,None]).sum(dim=1)
+                # ========================================================
 
                 render_color[h:h+self.tile_size, w:w+self.tile_size] = tile_color.reshape(self.tile_size, self.tile_size, -1)
-                render_depth[h:h+self.tile_size, w:w+self.tile_size] = tile_depth.reshape(self.tile_size, self.tile_size, -1)
-                render_alpha[h:h+self.tile_size, w:w+self.tile_size] = acc_alpha.reshape(self.tile_size, self.tile_size, -1)
 
-        return {"render": render_color, "depth": render_depth, "alpha": render_alpha}
+        return render_color
 
 @torch.no_grad()
 def homogenize(points):
@@ -313,8 +318,8 @@ def build_scaling_rotation(s, r):
 
 @torch.no_grad()
 def get_radius(cov2d):
-    det = cov2d[:, 0, 0] * cov2d[:,1,1] - cov2d[:, 0, 1] * cov2d[:,1,0]
-    mid = 0.5 * (cov2d[:, 0,0] + cov2d[:,1,1])
+    det = cov2d[:, 0, 0] * cov2d[:, 1, 1] - cov2d[:, 0, 1] * cov2d[:, 1, 0]
+    mid = 0.5 * (cov2d[:, 0, 0] + cov2d[:, 1, 1])
     lambda1 = mid + torch.sqrt((mid**2-det).clip(min=0.1))
     lambda2 = mid - torch.sqrt((mid**2-det).clip(min=0.1))
     return 3.0 * torch.sqrt(torch.max(lambda1, lambda2)).ceil()
