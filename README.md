@@ -153,10 +153,33 @@ Lastly, compute the binary mask indicating the points that are behind the near p
 
 ### Task 2. Covariance Matrix Projection
 
+Implement the projection of the covariance matrix onto the image plane in the `compute_cov_2d` method of `renderer.py`.
+
+You are only allowed to modify the code inside the block marked with `TODO` in the method.
+After transforming the centers of 3D Gaussians to the camera space, compute the Jacobian matrix of the world-to-camera and projective transformations.
+Specifically, we can use the Jacobian matrix $\mathbf{J}$ of form:
+$$
+\mathbf{J} = \begin{bmatrix}
+  \frac{f_x}{t_z} &      0          & -\frac{f_x t_x}{t_z^2} \\
+  0               & \frac{f_y}{t_z} & -\frac{f_y t_y}{t_z^2} \\
+  0               &      0          & 0
+\end{bmatrix},
+$$
+where $f_x$ and $f_y$ are the focal lengths, and $t_x$, $t_y$, and $t_z$ are the center coordinates of 3D Gaussians in the camera space.
+We have already provided a tensor `J` filled with zeros of the correct shape. You need to fill in the correct values in the tensor.
+
+Next, compute the covariance matrix in the image plane by projecting the covariance matrix in the world space using the Jacobian matrix:
+$$
+\boldsymbol{\Sigma}_{\text{2D}} = \mathbf{J} \mathbf{W} \boldsymbol{\Sigma}_{\text{3D}} \mathbf{W}^T \mathbf{J}^T
+$$
+where $\mathbf{W}$ is the rigid transformation matrix from the camera space to the world space.
+
 > [!IMPORTANT]
 > Refer to the method signature and docstring for input and output specifications.
 
 ### Task 3. Volume Rendering of Projected Splats
+
+
 
 > [!IMPORTANT]
 > Refer to the method signature and docstring for input and output specifications.
