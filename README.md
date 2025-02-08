@@ -41,7 +41,9 @@ As in our previous assignment on NeRF, we strongly encourage you to review the p
 - [Code Structure](#code-structure)
 - [Tasks](#tasks)
   - [Task 0. Download Data](#task-0-download-data)
-  - [Task 1.]()
+  - [Task 1. World to NDC](#task-1-world-to-ndc)
+  - [Task 2. Covariance Matrix Projection](#task-2-covariance-matrix-projection)
+  - [Task 3. Volume Rendering of Projected Splats](#task-3-volume-rendering-of-projected-splats)
   - [Task 4. Qualitative \& Quantitative Evaluation](#task-4-qualitative--quantitative-evaluation)
 - [What to Submit](#what-to-submit)
 - [Grading](#grading)
@@ -70,7 +72,7 @@ The remaining dependencies are the ones related to PyTorch and they can be insta
 pip install torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cu124
 pip install torchmetrics[image]
 pip install imageio[ffmpeg]
-pip install plyfile tyro jaxtyping typeguard
+pip install plyfile tyro==0.6.0 jaxtyping==0.2.37 typeguard==2.13.3
 pip install simple-knn/.
 ```
 
@@ -123,7 +125,41 @@ data
 └── ship.ply            <- "Ship" Scene.
 ```
 
-### Task 1.
+### Task 1. World to NDC
+
+Implement the coordinate transformation from world space to normalized device coordinates (NDC) in the `project_ndc` method of `renderer.py`.  
+
+Given a homogeneous coordinate $\mathbf{p}$, performing the following matrix multiplication yields the coordinate of the point in the view space:
+$$
+\mathbf{p}_{\text{view}} = \mathbf{p} \mathbf{V}
+$$
+where $\mathbf{V}$ is the view matrix (world-to-camera transformation).
+
+To project the point onto the image plane, first perform the matrix multiplication
+$$
+\mathbf{p}_{\text{proj}} = \mathbf{p}_{\text{view}} \mathbf{P}
+$$
+where $\mathbf{P}$ is the projection matrix (camera-to-clip transformation).
+Then, divide the first three components of $\mathbf{p}_{\text{ndc}}$ by the fourth component to obtain the normalized device coordinates:
+$$
+\tilde{\mathbf{p}} = \frac{\mathbf{p}_{\text{proj}}}{\mathbf{p}_{\text{proj}, w}}
+$$
+where $\mathbf{p}_{\text{proj}, w}$ is the fourth component of $\mathbf{p}_{\text{proj}}$.
+
+Lastly, compute the binary mask indicating the points that are behind the near plane by checking whether the $z$-coordinate of $\mathbf{p}_{\text{view}}$ is greater than $z_{\text{near}}$.
+
+> [!IMPORTANT]
+> Refer to the method signature and docstring for input and output specifications.
+
+### Task 2. Covariance Matrix Projection
+
+> [!IMPORTANT]
+> Refer to the method signature and docstring for input and output specifications.
+
+### Task 3. Volume Rendering of Projected Splats
+
+> [!IMPORTANT]
+> Refer to the method signature and docstring for input and output specifications.
 
 ### Task 4. Qualitative \& Quantitative Evaluation
 
