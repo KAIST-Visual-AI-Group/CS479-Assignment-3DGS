@@ -219,29 +219,7 @@ Lastly, Perform alpha blending to accumulate the colors of the splats, using the
 
 ### Task 4. Qualitative \& Quantitative Evaluation
 
-For qualitative evaluation, render the trained scene with the provided script. 
-```
-python torch_nerf/runners/render.py +log_dir=${LOG_DIR} +render_test_views=False
-```
-This will produce a set of images rendered while orbiting around the upper hemisphere of an object.
-The rendered images can be compiled into a video using the script `scripts/utils/create_video.py`:
-```
-python scripts/utils/create_video.py --img_dir ${RENDERED_IMG_DIR} --vid_title ${VIDEO_TITLE}
-```
-
-For quantitative evaluation, render the trained scene again, **but from the test views**.
-```
-python torch_nerf/runners/render.py +log_dir=${LOG_DIR} +render_test_views=True
-```
-This will produce 200 images (in the case of the synthetic dataset) held out during training.
-After rendering images from the test view, use the script `evaluate.py` to compute LPIPS, PSNR, and SSIM. For instance, to evaluate the implementation for the `lego` scene:
-```
-python torch_nerf/runners/evaluate.py ${RENDERED_IMG_DIR} ./data/nerf_synthetic/lego/test
-```
-The metrics measured after training the network for 50k iterations on the `lego` scene are summarized in the following table.
-| LPIPS (↓) | PSNR (↑) | SSIM (↑) |
-|---|---|---|
-| 0.0481 | 28.9258 | 0.9473 |
+TBD.
 
 > :bulb: **For details on grading, refer to section [Evaluation Criteria](#evaluation-criteria).**
 
@@ -249,10 +227,9 @@ The metrics measured after training the network for 50k iterations on the `lego`
 
 Compile the following files as a **ZIP** file named `{NAME}_{STUDENT_ID}.zip` and submit the file via Gradescope.
   
-- The folder `torch_nerf` that contains every source code file;
-- A folder named `{NAME}_{STUDENT_ID}_renderings` containing the renderings (`.png` files) from the **test views** used for computing evaluation metrics;
+- The folder `gs_renderer` that contains every source code file;
+- A folder named `{NAME}_{STUDENT_ID}_renderings` containing the rendered images (`.png` files) used for computing evaluation metrics;
 - A text file named `{NAME}_{STUDENT_ID}.txt` containing **a comma-separated list of LPIPS, PSNR, and SSIM** from quantitative evaluation;
-- The checkpoint file named `{NAME}_{STUDENT_ID}.pth` used to produce the above metrics.
 
 ## Grading
 
@@ -265,12 +242,12 @@ Compile the following files as a **ZIP** file named `{NAME}_{STUDENT_ID}.zip` an
 
 **Your score will incur a 10% deduction for each missing item in the [Submission Guidelines](#submission-guidelines) section.**
 
-Otherwise, you will receive up to 300 points from this assignment that count toward your final grade.
+Otherwise, you will receive up to **TODO** points from this assignment that count toward your final grade.
 
 | Evaluation Criterion | LPIPS (↓) | PSNR (↑) | SSIM (↑) |
 |---|---|---|---|
-| **Success Condition \(100%\)** | **0.06** | **28.00** | **0.90** |
-| **Success Condition \(50%)**   | **0.10**  | **20.00** | **0.60** |
+| **Success Condition \(100%\)** |  |  |  |
+| **Success Condition \(50%)**   |  |  |  |
 
 As shown in the table above, each evaluation metric is assigned up to 100 points. In particular,
 - **LPIPS**
@@ -283,24 +260,6 @@ As shown in the table above, each evaluation metric is assigned up to 100 points
   - You will receive 100 points if the reported value is equal to or, *greater* than the success condition \(100%)\;
   - Otherwise, you will receive 50 points if the reported value is equal to or, *greater* than the success condition \(50%)\.
 
-## Further Readings
+## Reference
 
-If you are interested in this topic, we encourage you to check out the papers listed below.
-
-- [NeRF++: Analyzing and Improving Neural Radiance Fields (arXiv 2021)](https://arxiv.org/abs/2010.07492)
-- [NeRF in the Wild: Neural Radiance Fields for Unconstrained Photo Collections (CVPR 2021)](https://arxiv.org/abs/2008.02268)
-- [pixelNeRF: Neural Radiance Fields from One or Few Images (CVPR 2021)](https://arxiv.org/abs/2012.02190)
-- [Mip-NeRF: A Multiscale Representation for Anti-Aliasing Neural Radiance Fields (ICCV 2021)](https://arxiv.org/abs/2103.13415)
-- [BARF: Bundle-Adjusting Neural Radiance Fields (ICCV 2021)](https://arxiv.org/abs/2104.06405)
-- [Nerfies: Deformable Neural Radiance Fields (ICCV 2021)](https://arxiv.org/abs/2011.12948)
-- [NeuS: Learning Neural Implicit Surfaces by Volume Rendering for Multi-view Reconstruction (NeurIPS 2021)](https://arxiv.org/abs/2106.10689)
-- [Volume Rendering of Neural Implicit Surfaces (NeurIPS 2021)](https://arxiv.org/abs/2106.12052)
-- [Mip-NeRF 360: Unbounded Anti-Aliased Neural Radiance Fields (CVPR 2022)](https://arxiv.org/abs/2111.12077)
-- [RegNeRF: Regularizing Neural Radiance Fields for View Synthesis from Sparse Inputs (CVPR 2022)](https://arxiv.org/abs/2112.00724)
-- [Mega-NeRF: Scalable Construction of Large-Scale NeRFs for Virtual Fly-Throughs (CVPR 2022)](https://arxiv.org/abs/2112.10703)
-- [Plenoxels: Radiance Fields without Neural Networks (CVPR 2022)](https://arxiv.org/abs/2112.05131)
-- [Point-NeRF: Point-based Neural Radiance Fields (CVPR 2022)](https://arxiv.org/abs/2201.08845)
-- [Instant-NGP: Instant Neural Graphics Primitives with a Multiresolution Hash Encoding (SIGGRAPH 2022)](https://arxiv.org/abs/2201.05989)
-- [TensoRF: Tensorial Radiance Fields (ECCV 2022)](https://arxiv.org/abs/2203.09517)
-- [MobileNeRF: Exploiting the Polygon Rasterization Pipeline for Efficient Neural Field Rendering on Mobile Architectures (CVPR 2023)](https://arxiv.org/abs/2208.00277v5)
-- [Zip-NeRF: Anti-Aliased Grid-Based Neural Radiance Fields (ICCV 2023)](https://arxiv.org/abs/2304.06706)
+- [torch-splatting](https://github.com/hbb1/torch-splatting)
