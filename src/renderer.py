@@ -36,9 +36,7 @@ class GSRasterizer(object):
         # Process camera parameters
         # NOTE: We transpose both camera extrinsic and projection matrices
         # assuming that these transforms are applied to points in row vector format.
-        # NOTE: Do NOT modify this block, unless you are well-aware of differences between
-        # coordinate system conventions.
-
+        # NOTE: Do NOT modify this block.
         # Retrieve camera pose (extrinsic)
         R = camera.camera_to_world[:3, :3]  # 3 x 3
         T = camera.camera_to_world[:3, 3:4]  # 3 x 1
@@ -59,9 +57,7 @@ class GSRasterizer(object):
 
         # Project to NDC
         mean_ndc, mean_view, in_mask = self.project_ndc(
-            mean_3d,
-            viewmatrix=world_to_camera, 
-            projmatrix=proj_mat,
+            mean_3d, world_to_camera, proj_mat, camera.near,
         )
         mean_ndc = mean_ndc[in_mask]
         mean_view = mean_view[in_mask]
@@ -83,7 +79,8 @@ class GSRasterizer(object):
             fov_x=camera.fov_x, 
             fov_y=camera.fov_y, 
             f_x=camera.f_x, 
-            f_y=camera.f_y)
+            f_y=camera.f_y,
+        )
         
         # Compute pixel space coordinates of projected Gaussians
         mean_coord_x = ((mean_ndc[..., 0] + 1) * camera.image_width - 1.0) * 0.5
@@ -115,14 +112,15 @@ class GSRasterizer(object):
         return color
     
     @torch.no_grad()
-    def project_ndc(self, points, viewmatrix, projmatrix):
+    def project_ndc(self, points, w2c, proj_mat, z_near):
         points_o = homogenize(points) # object space
-        points_h = points_o @ viewmatrix @ projmatrix # screen space # RHS
+        points_h = points_o @ w2c @ proj_mat # screen space # RHS
         p_w = 1.0 / (points_h[..., -1:] + 0.000001)
         p_proj = points_h * p_w
-        p_view = points_o @ viewmatrix
-        
-        in_mask = p_view[..., 2] >= 0.01
+        p_view = points_o @ w2c
+
+        # Cull points that are close or behind the camera
+        in_mask = p_view[..., 2] >= z_near
 
         return p_proj, p_view, in_mask
 
@@ -142,26 +140,24 @@ class GSRasterizer(object):
         # Transposes used to account for row-/column-major conventions.
         tan_fovx = math.tan(fov_x * 0.5)
         tan_fovy = math.tan(fov_y * 0.5)
-        t = (mean_3d @ w2c[:3,:3]) + w2c[-1:,:3]
+        t = (mean_3d @ w2c[:3, :3]) + w2c[-1:, :3]
 
         # truncate the influences of gaussians far outside the frustum.
-        tx = (t[..., 0] / t[..., 2]).clip(min=-tan_fovx*1.3, max=tan_fovx*1.3) * t[..., 2]
-        ty = (t[..., 1] / t[..., 2]).clip(min=-tan_fovy*1.3, max=tan_fovy*1.3) * t[..., 2]
+        tx = (t[..., 0] / t[..., 2]).clip(min=-tan_fovx * 1.3, max=tan_fovx * 1.3) * t[..., 2]
+        ty = (t[..., 1] / t[..., 2]).clip(min=-tan_fovy * 1.3, max=tan_fovy * 1.3) * t[..., 2]
         tz = t[..., 2]
 
-        # Eq.29 locally affine transform 
-        # perspective transform is not affine so we approximate with first-order taylor expansion
-        # notice that we multiply by the intrinsic so that the variance is at the sceen space
+        # TODO: Compute Jacobian of view transform and projection
         J = torch.zeros(mean_3d.shape[0], 3, 3).to(mean_3d)
         J[..., 0, 0] = 1 / tz * f_x
         J[..., 0, 2] = -tx / (tz * tz) * f_x
         J[..., 1, 1] = 1 / tz * f_y
         J[..., 1, 2] = -ty / (tz * tz) * f_y
-        W = w2c[:3,:3].T # transpose to correct viewmatrix
-        cov2d = J @ W @ cov3d @ W.T @ J.permute(0,2,1)
+        W = w2c[:3, :3].T # transpose to correct viewmatrix
+        cov2d = J @ W @ cov3d @ W.T @ J.permute(0, 2, 1)
         
         # add low pass filter here according to E.q. 32
-        filter = torch.eye(2,2).to(cov2d) * 0.3
+        filter = torch.eye(2, 2).to(cov2d) * 0.3
         return cov2d[:, :2, :2] + filter[None]
 
     @torch.no_grad()
@@ -193,7 +189,7 @@ class GSRasterizer(object):
 
                 P = in_mask.sum()
 
-                tile_coord = pix_coord[h:h+TILE_SIZE, w:w+TILE_SIZE].flatten(0,-2)
+                tile_coord = pix_coord[h:h + TILE_SIZE, w:w + TILE_SIZE].flatten(0,-2)
                 sorted_depths, index = torch.sort(depths[in_mask])
                 sorted_means2D = mean_2d[in_mask][index]
                 sorted_cov2d = cov2d[in_mask][index] # P 2 2
