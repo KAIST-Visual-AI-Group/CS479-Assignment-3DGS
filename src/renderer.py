@@ -5,7 +5,9 @@ The implementation is based on torch-splatting: https://github.com/hbb1/torch-sp
 """
 
 import math
+from jaxtyping import Bool, Float, jaxtyped
 import torch
+from typeguard import typechecked
 
 
 from .camera import Camera
@@ -22,6 +24,7 @@ class GSRasterizer(object):
 
         self.sh_degree = 3
         self.white_bkgd = True
+        self.tile_size = 25
 
     def render_scene(self, scene: Scene, camera: Camera):
 
@@ -55,7 +58,7 @@ class GSRasterizer(object):
         proj_mat = proj_mat.to(mean_3d.device)
         # ============================================================================
 
-        # Project to NDC
+        # Project Gaussian center positions to NDC
         mean_ndc, mean_view, in_mask = self.project_ndc(
             mean_3d, world_to_camera, proj_mat, camera.near,
         )
@@ -69,15 +72,13 @@ class GSRasterizer(object):
         color = self.get_rgb_from_sh(mean_3d, shs, camera)
 
         # Compute 3D covariance matrix
-        cov3d = self.build_covariance_3d(scales, rotations)
+        cov_3d = self.compute_cov_3d(scales, rotations)
 
         # Project covariance matrices to 2D
-        cov2d = self.build_covariance_2d(
+        cov_2d = self.compute_cov_2d(
             mean_3d=mean_3d, 
-            cov3d=cov3d, 
+            cov_3d=cov_3d, 
             w2c=world_to_camera,
-            fov_x=camera.fov_x, 
-            fov_y=camera.fov_y, 
             f_x=camera.f_x, 
             f_y=camera.f_y,
         )
@@ -90,7 +91,7 @@ class GSRasterizer(object):
         rets = self.render(
             camera = camera, 
             mean_2d=mean_2d,
-            cov2d=cov2d,
+            cov2d=cov_2d,
             color=color,
             opacity=opacities, 
             depths=depths,
@@ -111,77 +112,126 @@ class GSRasterizer(object):
         color = torch.clamp_min(color + 0.5, 0.0)
         return color
     
+    @jaxtyped(typechecker=typechecked)
     @torch.no_grad()
-    def project_ndc(self, points, w2c, proj_mat, z_near):
+    def project_ndc(
+        self,
+        points: Float[torch.Tensor, "N 3"],
+        w2c: Float[torch.Tensor, "4 4"],
+        proj_mat: Float[torch.Tensor, "4 4"],
+        z_near: float,
+    ) -> tuple[
+        Float[torch.Tensor, "N 4"],
+        Float[torch.Tensor, "N 4"],
+        Bool[torch.Tensor, "N"],
+    ]:
+        """
+        Projects points to NDC space.
+        
+        Args:
+        - points: 3D points in object space.
+        - w2c: World-to-camera matrix.
+        - proj_mat: Projection matrix.
+        - z_near: Near plane distance.
+
+        Returns:
+        - p_ndc: NDC coordinates.
+        - p_view: View space coordinates.
+        - in_mask: Mask of points that are in the frustum.
+        """
         points_o = homogenize(points) # object space
         points_h = points_o @ w2c @ proj_mat # screen space # RHS
         p_w = 1.0 / (points_h[..., -1:] + 0.000001)
-        p_proj = points_h * p_w
+        p_ndc = points_h * p_w
         p_view = points_o @ w2c
 
         # Cull points that are close or behind the camera
         in_mask = p_view[..., 2] >= z_near
-
-        return p_proj, p_view, in_mask
+        return p_ndc, p_view, in_mask
 
     @torch.no_grad()
-    def build_covariance_3d(self, s, r):
+    def compute_cov_3d(self, s, r):
         L = build_scaling_rotation(s, r)
         cov3d = L @ L.transpose(1, 2)
         return cov3d
 
+    @jaxtyped(typechecker=typechecked)
     @torch.no_grad()
-    def build_covariance_2d(
-        self, mean_3d, cov3d, w2c, fov_x, fov_y, f_x, f_y
-    ):
-        # The following models the steps outlined by equations 29
-        # and 31 in "EWA Splatting" (Zwicker et al., 2002). 
-        # Additionally considers aspect / scaling of viewport.
-        # Transposes used to account for row-/column-major conventions.
-        tan_fovx = math.tan(fov_x * 0.5)
-        tan_fovy = math.tan(fov_y * 0.5)
+    def compute_cov_2d(
+        self,
+        mean_3d: Float[torch.Tensor, "N 3"],
+        cov_3d: Float[torch.Tensor, "N 3 3"],
+        w2c: Float[torch.Tensor, "4 4"],
+        f_x: Float[torch.Tensor, ""],
+        f_y: Float[torch.Tensor, ""],
+    ) -> Float[torch.Tensor, "N 2 2"]:
+        """
+        Projects 3D covariances to 2D image plane.
+
+        Args:
+        - mean_3d: Coordinates of center of 3D Gaussians.
+        - cov_3d: 3D covariance matrix.
+        - w2c: World-to-camera matrix.
+        - f_x: Focal length along x-axis.
+        - f_y: Focal length along y-axis.
+
+        Returns:
+        - cov_2d: 2D covariance matrix.
+        """ 
+        # ========================================================
+        # TODO: Transform 3D mean coordinates to camera space
         t = (mean_3d @ w2c[:3, :3]) + w2c[-1:, :3]
-
-        # truncate the influences of gaussians far outside the frustum.
-        tx = (t[..., 0] / t[..., 2]).clip(min=-tan_fovx * 1.3, max=tan_fovx * 1.3) * t[..., 2]
-        ty = (t[..., 1] / t[..., 2]).clip(min=-tan_fovy * 1.3, max=tan_fovy * 1.3) * t[..., 2]
+        tx = t[..., 0]
+        ty = t[..., 1]
         tz = t[..., 2]
+        # ========================================================
 
-        # TODO: Compute Jacobian of view transform and projection
+        # Transpose the rigid transformation part of the world-to-camera matrix
         J = torch.zeros(mean_3d.shape[0], 3, 3).to(mean_3d)
+        W = w2c[:3, :3].T
+        # ========================================================
+        # TODO: Compute Jacobian of view transform and projection
         J[..., 0, 0] = 1 / tz * f_x
         J[..., 0, 2] = -tx / (tz * tz) * f_x
         J[..., 1, 1] = 1 / tz * f_y
         J[..., 1, 2] = -ty / (tz * tz) * f_y
-        W = w2c[:3, :3].T # transpose to correct viewmatrix
-        cov2d = J @ W @ cov3d @ W.T @ J.permute(0, 2, 1)
-        
+        cov_2d = J @ W @ cov_3d @ W.T @ J.permute(0, 2, 1)
+        # ========================================================
+
         # add low pass filter here according to E.q. 32
-        filter = torch.eye(2, 2).to(cov2d) * 0.3
-        return cov2d[:, :2, :2] + filter[None]
+        filter = torch.eye(2, 2).to(cov_2d) * 0.3
+        return cov_2d[:, :2, :2] + filter[None]
 
+    @jaxtyped(typechecker=typechecked)
     @torch.no_grad()
-    def render(self, camera, mean_2d, cov2d, color, opacity, depths):
-
+    def render(
+        self,
+        camera,
+        mean_2d,
+        cov2d,
+        color,
+        opacity,
+        depths,
+    ):
         radii = get_radius(cov2d)
         rect = get_rect(mean_2d, radii, width=camera.image_width, height=camera.image_height)
 
         pix_coord = torch.stack(
             torch.meshgrid(torch.arange(camera.image_height), torch.arange(camera.image_width), indexing='xy'),
             dim=-1,
-        ).to('cuda')
-        self.render_color = torch.ones(*pix_coord.shape[:2], 3).to('cuda')
-        self.render_depth = torch.zeros(*pix_coord.shape[:2], 1).to('cuda')
-        self.render_alpha = torch.zeros(*pix_coord.shape[:2], 1).to('cuda')
+        ).to(mean_2d.device)
+        
+        render_color = torch.ones(*pix_coord.shape[:2], 3).to(mean_2d.device)
+        render_depth = torch.zeros(*pix_coord.shape[:2], 1).to(mean_2d.device)
+        render_alpha = torch.zeros(*pix_coord.shape[:2], 1).to(mean_2d.device)
 
-        TILE_SIZE = 25
-        assert camera.image_height % TILE_SIZE == 0, "Image height must be divisible by TILE_SIZE"
-        assert camera.image_width % TILE_SIZE == 0, "Image width must be divisible by TILE_SIZE"
-        for h in range(0, camera.image_height, TILE_SIZE):
-            for w in range(0, camera.image_width, TILE_SIZE):
+        assert camera.image_height % self.tile_size == 0, "Image height must be divisible by self.tile_size"
+        assert camera.image_width % self.tile_size == 0, "Image width must be divisible by self.tile_size"
+        for h in range(0, camera.image_height, self.tile_size):
+            for w in range(0, camera.image_width, self.tile_size):
                 # check if the rectangle penetrate the tile
                 over_tl = rect[0][..., 0].clip(min=w), rect[0][..., 1].clip(min=h)
-                over_br = rect[1][..., 0].clip(max=w+TILE_SIZE-1), rect[1][..., 1].clip(max=h+TILE_SIZE-1)
+                over_br = rect[1][..., 0].clip(max=w+self.tile_size-1), rect[1][..., 1].clip(max=h+self.tile_size-1)
                 in_mask = (over_br[0] > over_tl[0]) & (over_br[1] > over_tl[1]) # 3D gaussian in the tile 
 
                 if not in_mask.sum() > 0:
@@ -189,7 +239,7 @@ class GSRasterizer(object):
 
                 P = in_mask.sum()
 
-                tile_coord = pix_coord[h:h + TILE_SIZE, w:w + TILE_SIZE].flatten(0,-2)
+                tile_coord = pix_coord[h:h + self.tile_size, w:w + self.tile_size].flatten(0,-2)
                 sorted_depths, index = torch.sort(depths[in_mask])
                 sorted_means2D = mean_2d[in_mask][index]
                 sorted_cov2d = cov2d[in_mask][index] # P 2 2
@@ -197,7 +247,7 @@ class GSRasterizer(object):
                 sorted_opacity = opacity[in_mask][index]
                 sorted_color = color[in_mask][index]
                 dx = (tile_coord[:,None,:] - sorted_means2D[None,:]) # B P 2
-                assert dx.shape == (TILE_SIZE*TILE_SIZE, P, 2)
+                assert dx.shape == (self.tile_size*self.tile_size, P, 2)
 
                 gauss_weight = torch.exp(-0.5 * (
                     dx[:, :, 0]**2 * sorted_conic[:, 0, 0] 
@@ -211,17 +261,11 @@ class GSRasterizer(object):
                 tile_color = (T * alpha * sorted_color[None]).sum(dim=1) + (1-acc_alpha) * (1 if self.white_bkgd else 0)
                 tile_depth = ((T * alpha) * sorted_depths[None,:,None]).sum(dim=1)
 
-                self.render_color[h:h+TILE_SIZE, w:w+TILE_SIZE] = tile_color.reshape(TILE_SIZE, TILE_SIZE, -1)
-                self.render_depth[h:h+TILE_SIZE, w:w+TILE_SIZE] = tile_depth.reshape(TILE_SIZE, TILE_SIZE, -1)
-                self.render_alpha[h:h+TILE_SIZE, w:w+TILE_SIZE] = acc_alpha.reshape(TILE_SIZE, TILE_SIZE, -1)
+                render_color[h:h+self.tile_size, w:w+self.tile_size] = tile_color.reshape(self.tile_size, self.tile_size, -1)
+                render_depth[h:h+self.tile_size, w:w+self.tile_size] = tile_depth.reshape(self.tile_size, self.tile_size, -1)
+                render_alpha[h:h+self.tile_size, w:w+self.tile_size] = acc_alpha.reshape(self.tile_size, self.tile_size, -1)
 
-        return {
-            "render": self.render_color,
-            "depth": self.render_depth,
-            "alpha": self.render_alpha,
-            "visiility_filter": radii > 0,
-            "radii": radii
-        }
+        return {"render": render_color, "depth": render_depth, "alpha": render_alpha}
 
 @torch.no_grad()
 def homogenize(points):
