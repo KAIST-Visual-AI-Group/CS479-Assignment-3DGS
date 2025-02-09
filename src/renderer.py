@@ -135,14 +135,17 @@ class GSRasterizer(object):
         - p_view: View space coordinates.
         - in_mask: Mask of points that are in the frustum.
         """
+        # ========================================================
+        # TODO: Implement the projection to NDC space        
         points_o = homogenize(points) # object space
         points_h = points_o @ w2c @ proj_mat # screen space # RHS
         p_w = 1.0 / (points_h[..., -1:] + 0.000001)
         p_ndc = points_h * p_w
         p_view = points_o @ w2c
 
-        # Cull points that are close or behind the camera
+        # TODO: Cull points that are close or behind the camera
         in_mask = p_view[..., 2] >= z_near
+        # ========================================================
         return p_ndc, p_view, in_mask
 
     @torch.no_grad()
