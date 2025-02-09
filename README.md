@@ -249,7 +249,7 @@ Compile the following files as a **ZIP** file named `{STUDENT_ID}.zip` and submi
   
 **Plagiarism in any form will also result in a zero score and will be reported to the university.**
 
-**Your score will incur a 10% deduction for each missing item in the [Submission Guidelines](#submission-guidelines) section.**
+**Your score will incur a 10% deduction for each missing item in the [What to Submit](#what-to-submit) section.**
 
 Otherwise, you will receive up to 300 points from this assignment that count toward your final grade. Your submissions will be graded based on the average metrics calculated across the four scenes.
 
