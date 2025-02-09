@@ -101,7 +101,9 @@ gs_renderer
 │   ├── renderer.py     <- Main renderer implementation.
 │   ├── scene.py        <- A light-weight data class for storing Gaussian Splat parameters.
 │   └── sh.py           <- A utility for processing Spherical Harmonic coefficients.
+├── evaluate.py         <- Script for computing evaluation metrics.
 ├── render.py           <- Main script for rendering.
+├── render_all.sh       <- Shell script for rendering all scenes for evaluation.
 └── README.md           <- This file.
 ```
 
@@ -109,20 +111,20 @@ gs_renderer
 
 ### Task 0. Download Data
 
-Download the scene files (`data.zip`) from [here](https://drive.google.com/file/d/16z6kmnPgvPN-HVu0TpCloxvygUrjCzu6/view?usp=sharing) and extract them into the root directory.
+Download the scene files (`data.zip`) from [here](https://drive.google.com/file/d/14YVFRR-8L8UVR_UXOe_W-ogNs0IM0572/view?usp=sharing) and extract them into the root directory.
 After extraction, the `data` directory should be structured as follows:
 ```
 data
 │
-├── cam_data.npz        <- Camera parameters.
-├── chair.ply           <- "Chair" Scene.
-├── drums.ply           <- "Drums" Scene.
-├── ficus.ply           <- "Ficus" Scene.
-├── hotdog.ply          <- "Hotdog" Scene.
-├── lego.ply            <- "Lego" Scene.
-├── materials.ply       <- "Materials" Scene.
-├── mic.ply             <- "Mic" Scene.
-└── ship.ply            <- "Ship" Scene.
+├── nerf_synthetic      <- Directory containing camera parameters and reference images
+│   ├── chair
+│   ├── drums
+│   ├── lego
+│   └── materials
+├── chair.ply           <- Gaussian splats for "Chair" Scene.
+├── drums.ply           <- Gaussian splats for "Drums" Scene.
+├── lego.ply            <- Gaussian splats for "Lego" Scene.
+└── materials.ply       <- Gaussian splats for "Materials" Scene.
 ```
 
 ### Task 1. World to NDC
