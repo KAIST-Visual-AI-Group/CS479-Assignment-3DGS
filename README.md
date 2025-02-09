@@ -214,13 +214,13 @@ After completing the tasks above, run the script
 ```
 ./render_all.sh
 ```
-to generate images for all scenes. This will render images for four scenes: `chair`, `lego`, `materials`, and `drums`.  
+to render and save images for all scenes: `chair`, `lego`, `materials`, and `drums`.
 
 To evaluate the results, run the following command:  
 ```
 python evaluate.py
 ```  
-This will generate a file named `metrics.csv` in the current directory, which will be used for grading as described below.
+This will create a file named `metrics.csv` in the current directory, which will be used for grading.
 
 For reference, our implementation produces the following metrics:
 | Scene     | LPIPS (↓)    | PSNR (↑)    | SSIM (↑)    |
