@@ -194,13 +194,11 @@ The provided skeleton already implements this process, and you can use `in_mask`
 
 Implement the following four steps in the `render` method at the locations marked as `TODO`:
 
-1. Sort the Gaussians in ascending order based on their depth.
-2. Compute the displacement vector $\mathbf{d}\_{i,j} \in \mathbb{R}^2$ between the center of $i$-th pixel in the current tile and the $j$-th Gaussian splat indicated by `in_mask`.
-3. Compute the Gaussian weight at the pixel center by evaluating the Gaussian distribution at the displacement vector:
-  ```math
-  \mathbf{w}_{i,j} = \exp (-\frac{1}{2} \mathbf{d}_{i,j}^T  \Sigma_{j}^{-1}  \mathbf{d}_{i,j} )
-  ```
-  where $\Sigma\_{j}$ is the covariance matrix of the $j$-th 2D Gaussian splat.
+1. Sort the Gaussians in ascending order based on their depth.  
+2. Compute the displacement vector $\mathbf{d}\_{i,j} \in \mathbb{R}^2$ between the center of $i$-th pixel in the current tile and the $j$-th Gaussian splat indicated by `in_mask`.  
+3. Compute the Gaussian weight at the pixel center by evaluating the Gaussian distribution at the displacement vector as
+  $\mathbf{w}\_{i,j} = \exp (-\frac{1}{2} \mathbf{d}\_{i,j}^T  \Sigma\_{j}^{-1}  \mathbf{d}\_{i,j} )$
+  where $\Sigma\_{j}$ is the covariance matrix of the $j$-th 2D Gaussian splat.  
 4. Perform alpha blending to accumulate the colors of the splats, using the product of opacities and Gaussian weights from Step 3 to determine the final pixel colors. The color of the $i$-th pixel is computed as:
   ```math
   \mathbf{C}_i = \sum_{j} \mathbf{c}_j \tilde{\alpha}_j \Pi_{k < j} (1 - \tilde{\alpha}_k),
