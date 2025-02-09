@@ -16,7 +16,7 @@
 </div>
 
 <div align=center>
-  <img src="./media/teaser.gif" width="400"/>
+  <img src="./media/teaser.gif" width="800"/>
 </div>
 
 #### Due: TBD, 23:59 KST
@@ -219,17 +219,36 @@ Lastly, Perform alpha blending to accumulate the colors of the splats, using the
 
 ### Task 4. Qualitative \& Quantitative Evaluation
 
-TBD.
+After completing the tasks above, run the script
+```
+./render_all.sh
+```
+to generate images for all scenes. This will render images for four scenes: `chair`, `lego`, `materials`, and `drums`.  
 
-> :bulb: **For details on grading, refer to section [Evaluation Criteria](#evaluation-criteria).**
+To evaluate the results, run the following command:  
+```
+python evaluate.py
+```  
+This will generate a file named `metrics.csv` in the current directory, which will be used for grading as described below.
+
+For reference, our implementation produces the following metrics:
+| Scene     | LPIPS (↓)    | PSNR (↑)    | SSIM (↑)    |
+|-----------|--------------|-------------|-------------|
+| Chair     |    0.037     |    27.043   |    0.953    |
+| Lego      |    0.047     |    25.723   |    0.939    |
+| Materials |    0.043     |    25.014   |    0.937    |
+| Drums     |    0.079     |    21.583   |    0.896    |
+| Average   |    0.052     |    24.841   |    0.931    |
+
+> :bulb: **For details on grading, refer to section [Grading](#grading).**
 
 ## What to Submit
 
-Compile the following files as a **ZIP** file named `{NAME}_{STUDENT_ID}.zip` and submit the file via Gradescope.
+Compile the following files as a **ZIP** file named `{STUDENT_ID}.zip` and submit the file via Gradescope.
   
 - The folder `gs_renderer` that contains every source code file;
-- A folder named `{NAME}_{STUDENT_ID}_renderings` containing the rendered images (`.png` files) used for computing evaluation metrics;
-- A text file named `{NAME}_{STUDENT_ID}.txt` containing **a comma-separated list of LPIPS, PSNR, and SSIM** from quantitative evaluation;
+- A folder named `{STUDENT_ID}` with four subdirectories containing the rendered images (`.png` files) used for evaluation;
+- A CSV named `{STUDENT_ID}.csv` containing the evaluation metrics from the `evaluate.py` script.
 
 ## Grading
 
@@ -242,24 +261,24 @@ Compile the following files as a **ZIP** file named `{NAME}_{STUDENT_ID}.zip` an
 
 **Your score will incur a 10% deduction for each missing item in the [Submission Guidelines](#submission-guidelines) section.**
 
-Otherwise, you will receive up to **TODO** points from this assignment that count toward your final grade.
+Otherwise, you will receive up to 300 points from this assignment that count toward your final grade. Your submissions will be graded based on the average metrics calculated across the four scenes.
 
-| Evaluation Criterion | LPIPS (↓) | PSNR (↑) | SSIM (↑) |
+| Evaluation Criterion | LPIPS (AVG) (↓) | PSNR (AVG) (↑) | SSIM (AVG) (↑) |
 |---|---|---|---|
-| **Success Condition \(100%\)** |  |  |  |
-| **Success Condition \(50%)**   |  |  |  |
+| **Success Condition \(100%\)** | 0.065 | 22.000 | 0.900 |
+| **Success Condition \(50%)**   | 0.080 | 20.000 | 0.850 |
 
 As shown in the table above, each evaluation metric is assigned up to 100 points. In particular,
-- **LPIPS**
+- **LPIPS (AVG)**
   - You will receive 100 points if the reported value is equal to or, *smaller* than the success condition \(100%)\;
   - Otherwise, you will receive 50 points if the reported value is equal to or, *smaller* than the success condition \(50%)\.
-- **PSNR**
+- **PSNR (AVG)**
   - You will receive 100 points if the reported value is equal to or, *greater* than the success condition \(100%)\;
   - Otherwise, you will receive 50 points if the reported value is equal to or, *greater* than the success condition \(50%)\.
-- **SSIM**
+- **SSIM (AVG)**
   - You will receive 100 points if the reported value is equal to or, *greater* than the success condition \(100%)\;
   - Otherwise, you will receive 50 points if the reported value is equal to or, *greater* than the success condition \(50%)\.
 
 ## Reference
 
-- [torch-splatting](https://github.com/hbb1/torch-splatting)
+- [torch-splatting](https://github.com/hbb1/torch-splatting): Our implementation is based on this repository.

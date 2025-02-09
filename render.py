@@ -5,6 +5,7 @@ A script for rendering Gaussian Splats.
 """
 
 from dataclasses import dataclass
+import json
 from pathlib import Path
 from typing import Literal
 
@@ -17,6 +18,7 @@ from tqdm import tqdm
 import tyro
 
 from src.camera import Camera
+from src.constants import USE_HALF
 from src.renderer import GSRasterizer
 from src.scene import Scene
 
@@ -48,7 +50,7 @@ def main(args: Args):
     # Load camera data
     (
         c2ws, proj_mat, fov, focal, near, far, img_width, img_height
-    ) = load_camera_params(device)
+    ) = load_camera_params(args.scene_type, device, use_half=USE_HALF)
     print("Loaded Camera Data.")
 
     # Initialize renderer
@@ -73,6 +75,7 @@ def main(args: Args):
             camera_to_world=c2w_, proj_mat=proj_mat_, cam_center=c2w_[:3, 3],
             fov_x=fov, fov_y=fov, near=near, far=far, image_width=img_width, image_height=img_height,
             f_x=focal, f_y=focal,
+            c_x=img_width / 2, c_y=img_height / 2,
         )
 
         # Render
@@ -84,21 +87,37 @@ def main(args: Args):
         w.append_data((img.cpu().numpy() * 255).astype(np.uint8))
 
         # Save individual frame
-        out_path = out_dir / f"img_{view_idx:03d}.png"
+        out_path = out_dir / f"r_{view_idx}.png"
         img = img.permute(2, 0, 1)
         tvu.save_image(img, out_path)
 
-def load_camera_params(device):
-    camera_poses = np.load("./data/cam_data.npz")
-    c2ws = camera_poses["poses"]
-    img_height, img_width = int(camera_poses["height"]), int(camera_poses["width"])
-    focal = torch.from_numpy(camera_poses["focal"]).float().to(device)
-    img_height *= 2
-    img_width *= 2
-    focal *= 2
+def load_camera_params(scene_type, device, use_half):
+    """
+    Loads camera parameters for a given scene type.
+    """
+    data_root = Path(f"data/nerf_synthetic/{scene_type}")
+    assert data_root.exists(), f"Path {data_root} does not exist."
+    tr_path = data_root / "transforms_test.json"
+    assert tr_path.exists(), f"Path {tr_path} does not exist."
+    tr_dict = json.load(open(tr_path, "r"))
+
+    c2ws = []
+    imgs = []
+    for frame in tr_dict["frames"]:
+        c2w = frame["transform_matrix"]
+        c2ws.append(c2w)
+        img = imageio.imread(data_root / (frame["file_path"] + ".png"))
+        imgs.append(img)
+    c2ws = np.array(c2ws)
+    img_height, img_width = imgs[0].shape[:2]
+    fov = torch.tensor(tr_dict['camera_angle_x']).to(device)
+    focal = convert_fov_to_focal(fov, img_width)
+    if use_half:
+        focal = focal // 2
+        img_height = img_height // 2
+        img_width = img_width // 2
     near = 1e-2
     far = 10.0
-    fov = convert_focal_to_fov(focal, img_width)
     proj_mat = compute_proj_mat(near, far, fov, fov)
     return c2ws, proj_mat, fov, focal, near, far, img_width, img_height
 
@@ -177,6 +196,9 @@ def load_ply(path):
 
 def convert_focal_to_fov(f, num_pixel):
     return 2.0 * torch.atan(num_pixel/(2*f))
+
+def convert_fov_to_focal(fov, num_pixel):
+    return num_pixel / (2.0 * torch.tan(fov / 2.0))
 
 def compute_inverse_pose(pose):
     R = pose[:3, :3]
