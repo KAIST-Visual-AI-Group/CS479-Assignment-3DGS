@@ -135,14 +135,15 @@ class GSRasterizer(object):
         - p_view: View space coordinates.
         - in_mask: Mask of points that are in the frustum.
         """
-        points_o = homogenize(points) # object space
-        points_h = points_o @ w2c @ proj_mat # screen space # RHS
-        p_w = 1.0 / (points_h[..., -1:] + 0.000001)
-        p_ndc = points_h * p_w
-        p_view = points_o @ w2c
+        # ========================================================
+        # TODO: Implement the projection to NDC space
+        p_ndc = None
+        p_view = None
 
-        # Cull points that are close or behind the camera
-        in_mask = p_view[..., 2] >= z_near
+        # TODO: Cull points that are close or behind the camera
+        in_mask = None
+        # ========================================================
+
         return p_ndc, p_view, in_mask
 
     @torch.no_grad()
@@ -176,10 +177,6 @@ class GSRasterizer(object):
         """ 
         # ========================================================
         # TODO: Transform 3D mean coordinates to camera space
-        t = (mean_3d @ w2c[:3, :3]) + w2c[-1:, :3]
-        tx = t[..., 0]
-        ty = t[..., 1]
-        tz = t[..., 2]
         # ========================================================
 
         # Transpose the rigid transformation part of the world-to-camera matrix
@@ -187,11 +184,7 @@ class GSRasterizer(object):
         W = w2c[:3, :3].T
         # ========================================================
         # TODO: Compute Jacobian of view transform and projection
-        J[..., 0, 0] = 1 / tz * f_x
-        J[..., 0, 2] = -tx / (tz * tz) * f_x
-        J[..., 1, 1] = 1 / tz * f_y
-        J[..., 1, 2] = -ty / (tz * tz) * f_y
-        cov_2d = J @ W @ cov_3d @ W.T @ J.permute(0, 2, 1)
+        cov_2d = None
         # ========================================================
 
         # add low pass filter here according to E.q. 32
@@ -234,36 +227,19 @@ class GSRasterizer(object):
 
                 # ========================================================
                 # TODO: Sort the projected Gaussians that lie in the current tile by their depths, in ascending order
-                sorted_depths, index = torch.sort(depths[in_mask])
-                sorted_mean_2d = mean_2d[in_mask][index]
-                sorted_cov_2d = cov_2d[in_mask][index] # P 2 2
-                sorted_cov_2d_inv = sorted_cov_2d.inverse() # inverse of variance
-                sorted_opacities = opacities[in_mask][index]
-                sorted_color = color[in_mask][index]
                 # ========================================================
                 
                 # ========================================================
                 # TODO: Compute the displacement vector from the 2D mean coordinates to the pixel coordinates
-                tile_coord = pix_coord[h:h + self.tile_size, w:w + self.tile_size].flatten(0,-2)
-                dx = (tile_coord[:,None,:] - sorted_mean_2d[None,:]) # B P 2
-                assert dx.shape == (self.tile_size*self.tile_size, in_mask.sum(), 2)
                 # ========================================================
 
                 # ========================================================
                 # TODO: Compute the Gaussian weight for each pixel in the tile
-                gauss_weight = torch.exp(-0.5 * (
-                    dx[:, :, 0]**2 * sorted_cov_2d_inv[:, 0, 0]
-                    + dx[:, :, 1]**2 * sorted_cov_2d_inv[:, 1, 1]
-                    + dx[:, :, 0] * dx[:, :, 1] * (sorted_cov_2d_inv[:, 0, 1] * sorted_cov_2d_inv[:, 1, 0]))
-                )
                 # ========================================================
 
                 # ========================================================
                 # TODO: Perform alpha blending
-                alpha = (gauss_weight[..., None] * sorted_opacities[None]).clip(max=0.99) # B P 1
-                T = torch.cat([torch.ones_like(alpha[:,:1]), 1-alpha[:,:-1]], dim=1).cumprod(dim=1)
-                acc_alpha = (alpha * T).sum(dim=1)
-                tile_color = (T * alpha * sorted_color[None]).sum(dim=1) + (1-acc_alpha) * (1 if self.white_bkgd else 0)
+                tile_color = None
                 # ========================================================
 
                 render_color[h:h+self.tile_size, w:w+self.tile_size] = tile_color.reshape(self.tile_size, self.tile_size, -1)
