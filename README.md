@@ -154,9 +154,6 @@ where $\mathbf{p}\_{\text{proj}, w}$ is the fourth component of $\mathbf{p}\_{\t
 
 Lastly, compute the binary mask indicating the points that are behind the near plane by checking whether the $z$-coordinate of $\mathbf{p}\_{\text{view}}$ is greater than $z\_{\text{near}}$.
 
-> [!IMPORTANT]
-> Refer to the method signature and docstring for input and output specifications.
-
 ### Task 2. Covariance Matrix Projection
 
 Implement the projection of the covariance matrix onto the image plane in the `compute_cov_2d` method of `renderer.py`.
@@ -184,9 +181,6 @@ Next, compute the covariance matrix in the image plane by projecting the world-s
 
 where $\mathbf{W}$ is the rigid transformation componenet of the camera space to world space transformation.
 
-> [!IMPORTANT]
-> Refer to the method signature and docstring for input and output specifications.
-
 ### Task 3. Rendering Equation of Point-Based Radiance Fields
 
 Finally, implement the rendering equation for point-based radiance fields in the `render` method of `renderer.py`, which computes pixel colors by blending the colors of 2D Gaussian splats stacked on the image plane.
@@ -213,9 +207,6 @@ Lastly, Perform alpha blending to accumulate the colors of the splats, using the
   where $\mathbf{c}\_j$ is the color of the $j$-th Gaussian splat, $\tilde{\alpha}\_j = \mathbf{w}\_{i,j} \alpha_{j}$ is the product of the Gaussian weight $\mathbf{w}\_{i,j}$ and the opacity $\alpha\_j$ of the $j$-th splat. Intuitively, the contribution of the $j$-th Gaussian splat depends on:
   1. Proximity: how close the $i$-th pixel is to the splat center in the image space, and
   2. Opacity: how opaque the splat is.
-
-> [!IMPORTANT]
-> Refer to the method signature and docstring for input and output specifications.
 
 ### Task 4. Qualitative \& Quantitative Evaluation
 
