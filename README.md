@@ -72,7 +72,7 @@ The remaining dependencies are the ones related to PyTorch and they can be insta
 pip install torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cu124
 pip install torchmetrics[image]
 pip install imageio[ffmpeg]
-pip install plyfile tyro==0.6.0 jaxtyping==0.2.37 typeguard==2.13.3
+pip install plyfile tyro==0.6.0 jaxtyping==0.2.36 typeguard==2.13.3
 pip install simple-knn/.
 ```
 
