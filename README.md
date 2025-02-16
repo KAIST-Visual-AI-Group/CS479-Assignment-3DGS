@@ -248,23 +248,23 @@ Compile the following files as a **ZIP** file named `{STUDENT_ID}.zip` and submi
 
 **Your score will incur a 10% deduction for each missing item in the [What to Submit](#what-to-submit) section.**
 
-Otherwise, you will receive up to 300 points from this assignment that count toward your final grade. Your submissions will be graded based on the average metrics calculated across the four scenes.
+Otherwise, you will receive up to 30 points from this assignment that count toward your final grade. Your submissions will be graded based on the average metrics calculated across the four scenes.
 
 | Evaluation Criterion | LPIPS (AVG) (↓) | PSNR (AVG) (↑) | SSIM (AVG) (↑) |
 |---|---|---|---|
 | **Success Condition \(100%\)** | 0.065 | 22.000 | 0.900 |
 | **Success Condition \(50%)**   | 0.080 | 20.000 | 0.850 |
 
-As shown in the table above, each evaluation metric is assigned up to 100 points. In particular,
+As shown in the table above, each evaluation metric is assigned up to 10 points. In particular,
 - **LPIPS (AVG)**
-  - You will receive 100 points if the reported value is equal to or, *smaller* than the success condition \(100%)\;
-  - Otherwise, you will receive 50 points if the reported value is equal to or, *smaller* than the success condition \(50%)\.
+  - You will receive 10 points if the reported value is equal to or, *smaller* than the success condition \(100%)\;
+  - Otherwise, you will receive 5 points if the reported value is equal to or, *smaller* than the success condition \(50%)\.
 - **PSNR (AVG)**
-  - You will receive 100 points if the reported value is equal to or, *greater* than the success condition \(100%)\;
-  - Otherwise, you will receive 50 points if the reported value is equal to or, *greater* than the success condition \(50%)\.
+  - You will receive 10 points if the reported value is equal to or, *greater* than the success condition \(100%)\;
+  - Otherwise, you will receive 5 points if the reported value is equal to or, *greater* than the success condition \(50%)\.
 - **SSIM (AVG)**
-  - You will receive 100 points if the reported value is equal to or, *greater* than the success condition \(100%)\;
-  - Otherwise, you will receive 50 points if the reported value is equal to or, *greater* than the success condition \(50%)\.
+  - You will receive 10 points if the reported value is equal to or, *greater* than the success condition \(100%)\;
+  - Otherwise, you will receive 5 points if the reported value is equal to or, *greater* than the success condition \(50%)\.
 
 ## Reference
 
