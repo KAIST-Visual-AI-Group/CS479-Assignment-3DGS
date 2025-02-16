@@ -3,7 +3,7 @@
     Gaussian Splatting: Point-Based Radiance Fields
   </h1>
   <p>
-    <a href=https://mhsung.github.io/kaist-cs479-spring-2025/ target="_blank"><b>KAIST CS479: Machine Learning for 3D Data (Spring 2025)</b></a><br>
+    <a href=https://mhsung.github.io/kaist-cs479-spring-2025/ target="_blank"><b>KAIST CS479: Machine Learning for 3D Data</b></a><br>
     Programming Assignment 4
   </p>
 </div>
@@ -18,9 +18,6 @@
 <div align=center>
   <img src="./media/teaser.gif" width="800"/>
 </div>
-
-#### Due: TBD, 23:59 KST
-#### Where to Submit: KLMS
 
 ## Abstract
 
