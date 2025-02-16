@@ -4,7 +4,7 @@
   </h1>
   <p>
     <a href=https://mhsung.github.io/kaist-cs479-spring-2025/ target="_blank"><b>KAIST CS479: Machine Learning for 3D Data</b></a><br>
-    Programming Assignment 4
+    Programming Assignment 3
   </p>
 </div>
 
