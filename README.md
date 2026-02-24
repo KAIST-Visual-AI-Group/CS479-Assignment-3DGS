@@ -11,7 +11,8 @@
 <div align=center>
   <p>
     Instructor: <a href=https://mhsung.github.io target="_blank"><b>Minhyuk Sung</b></a> (mhsung [at] kaist.ac.kr)<br>
-    TA: <a href=https://dvelopery0115.github.io target="_blank"><b>Seungwoo Yoo</b></a>  (dreamy1534 [at] kaist.ac.kr)      
+    TA: <a href=https://choidaedae.github.io target="_blank"><b>Daehyeon Choi</b></a>  (daehyeonchoi [at] kaist.ac.kr)<br>
+    Credit: <a href=https://dvelopery0115.github.io target="_blank"><b>Seungwoo Yoo</b></a>  (dreamy1534 [at] kaist.ac.kr)      
   </p>
 </div>
 
@@ -34,10 +35,9 @@ As in our previous assignment on NeRF, we strongly encourage you to review the p
 <summary><b>Table of Content</b></summary>
   
 - [Abstract](#abstract)
-- [Setup](#setup)
 - [Code Structure](#code-structure)
+- [Setup](#setup)
 - [Tasks](#tasks)
-  - [Task 0. Download Data](#task-0-download-data)
   - [Task 1. World to NDC](#task-1-world-to-ndc)
   - [Task 2. Covariance Matrix Projection](#task-2-covariance-matrix-projection)
   - [Task 3. Volume Rendering of Projected Splats](#task-3-volume-rendering-of-projected-splats)
@@ -46,45 +46,6 @@ As in our previous assignment on NeRF, we strongly encourage you to review the p
 - [Grading](#grading)
 - [Further Readings](#further-readings)
 </details>
-
-## Setup
-
-To get started, clone this repository first.
-```
-git clone --recursive https://github.com/KAIST-Visual-AI-Group/CS479-Assignment-3DGS
-```
-
-We recommend creating a virtual environment using `conda`.
-To create a `conda` environment, issue the following command:
-```
-conda create --name cs479-gs python=3.10
-```
-This should create a basic environment with Python 3.10 installed.
-Next, activate the environment and install the dependencies using `pip`:
-```
-conda activate cs479-gs
-```
-The remaining dependencies are the ones related to PyTorch and they can be installed with the command:
-```
-pip install torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cu124
-pip install torchmetrics[image]
-pip install imageio[ffmpeg]
-pip install plyfile tyro==0.6.0 jaxtyping==0.2.36 typeguard==2.13.3
-pip install simple-knn/.
-```
-
-Register the project root directory (i.e., `gs_renderer`) as an environment variable to help the Python interpreter search our files.
-```
-export PYTHONPATH=.
-```
-
-By default, the configuration is set to render `lego` scene. You can select different scenes by altering argument `Args` in `render.py`. Run the following command to render the scene:
-```
-python render.py
-```
-For now, running this command will result in an error, as the Gaussian Splat files have not been downloaded yet.  
-
-All by-products made during rendering, including images, videos, and evaluation results, will be saved in an experiment directory under `outputs/{SCENE NAME}`.
 
 
 ## Code Structure
@@ -104,11 +65,14 @@ gs_renderer
 └── README.md           <- This file.
 ```
 
-## Tasks
+## Setup
 
-### Task 0. Download Data
+To get started, clone this repository first.
+```
+git clone --recursive https://github.com/KAIST-Visual-AI-Group/CS479-Assignment-3DGS
+```
 
-Download the scene files (`data.zip`) from [here](https://drive.google.com/file/d/14YVFRR-8L8UVR_UXOe_W-ogNs0IM0572/view?usp=sharing) and extract them into the root directory.
+Then, download the scene files (`data.zip`) from [here](https://drive.google.com/file/d/14YVFRR-8L8UVR_UXOe_W-ogNs0IM0572/view?usp=sharing) and extract them into the root directory.
 After extraction, the `data` directory should be structured as follows:
 ```
 data
@@ -123,6 +87,12 @@ data
 ├── lego.ply            <- Gaussian splats for "Lego" Scene.
 └── materials.ply       <- Gaussian splats for "Materials" Scene.
 ```
+
+### IMPORTANT NOTE!
+For this year, we use google colab. upload your own project folder (including submodule and dataset), then setting up your environment and running your rendering and evaluation in colab. 
+For the environment setup and running, please refer `3DGS_inference.ipynb` file. 
+
+## Tasks
 
 ### Task 1. World to NDC
 
@@ -235,13 +205,13 @@ Compile the following files as a **ZIP** file named `{STUDENT_ID}.zip` and submi
   
 - The entire project directory containing every source code file;
 - A folder named `{STUDENT_ID}` with four subdirectories containing the rendered images (`.png` files) used for evaluation;
-- A CSV named `{STUDENT_ID}.csv` containing the evaluation metrics from the `evaluate.py` script.
+- A CSV named `evaluation.csv` containing the evaluation metrics from the `evaluate.py` script.
 
 ## Grading
 
 **You will receive a zero score if:**
 - **you do not submit,**
-- **your code is not executable in the Python environment we provided, or**
+- **your code is not executable in the google colab after setting environment we provided, or**
 - **you modify any code outside of the section marked with `TODO`.**
   
 **Plagiarism in any form will also result in a zero score and will be reported to the university.**
@@ -257,14 +227,14 @@ Otherwise, you will receive up to 30 points from this assignment that count towa
 
 As shown in the table above, each evaluation metric is assigned up to 10 points. In particular,
 - **LPIPS (AVG)**
-  - You will receive 10 points if the reported value is equal to or, *smaller* than the success condition \(100%)\;
-  - Otherwise, you will receive 5 points if the reported value is equal to or, *smaller* than the success condition \(50%)\.
+  - You will receive 6 points if the reported value is equal to or, *smaller* than the success condition \(100%)\;
+  - Otherwise, you will receive 3 points if the reported value is equal to or, *smaller* than the success condition \(50%)\.
 - **PSNR (AVG)**
-  - You will receive 10 points if the reported value is equal to or, *greater* than the success condition \(100%)\;
-  - Otherwise, you will receive 5 points if the reported value is equal to or, *greater* than the success condition \(50%)\.
+  - You will receive 7 points if the reported value is equal to or, *greater* than the success condition \(100%)\;
+  - Otherwise, you will receive 3.5 points if the reported value is equal to or, *greater* than the success condition \(50%)\.
 - **SSIM (AVG)**
-  - You will receive 10 points if the reported value is equal to or, *greater* than the success condition \(100%)\;
-  - Otherwise, you will receive 5 points if the reported value is equal to or, *greater* than the success condition \(50%)\.
+  - You will receive 7 points if the reported value is equal to or, *greater* than the success condition \(100%)\;
+  - Otherwise, you will receive 3.5 points if the reported value is equal to or, *greater* than the success condition \(50%)\.
 
 ## Reference
 

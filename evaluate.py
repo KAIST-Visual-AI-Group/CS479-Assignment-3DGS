@@ -61,13 +61,14 @@ def main() -> None:
     })
 
     # Save metrics to CSV
-    csv_file = "./metrics.csv"
-    with open(csv_file, mode='w', newline='') as file:
-        writer = csv.DictWriter(file, fieldnames=["scene", "lpips", "psnr", "ssim"])
-        writer.writeheader()
-        writer.writerows(metrics_list)
+    print(f"LPIPS: {lpips_avg:.4f}")
+    print(f"PSNR: {psnr_avg:.4f}")
+    print(f"SSIM: {ssim_avg:.4f}")
 
-    print(f"Metrics saved to {csv_file}")
+    # Save metrics to evaluation.txt (comma-separated: LPIPS, PSNR, SSIM)
+    with open("evaluation.txt", "w") as f:
+        f.write(f"{lpips_avg:.4f}, {psnr_avg:.4f}, {ssim_avg:.4f}")
+    print("Done.")
 
 
 

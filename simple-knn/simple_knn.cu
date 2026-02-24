@@ -8,6 +8,7 @@
  *
  * For inquiries contact  george.drettakis@inria.fr
  */
+#include <cfloat>
 
 #define BOX_SIZE 1024
 

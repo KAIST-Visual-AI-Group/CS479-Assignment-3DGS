@@ -196,6 +196,5 @@ pyrightconfig.json
 
 .vscode
 outputs
-data
 make_teaser.py
 metrics.csv

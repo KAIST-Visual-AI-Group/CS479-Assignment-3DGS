@@ -11,8 +11,11 @@ from typing import Callable
 
 import numpy as np
 import torch
-import torchmetrics
-from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
+from torchmetrics.image import (
+    LearnedPerceptualImagePatchSimilarity,
+    PeakSignalNoiseRatio,
+    StructuralSimilarityIndexMeasure,
+)
 
 
 @torch.no_grad()
@@ -23,7 +26,7 @@ def compute_lpips_between_directories(pred_dir: Path, target_dir: Path) -> float
     lpips = LearnedPerceptualImagePatchSimilarity(
         net_type='vgg',
         normalize=True,
-    ).cuda()
+    )
     return compute_metric_between_directories(pred_dir, target_dir, lpips)
 
 @torch.no_grad()
@@ -31,7 +34,7 @@ def compute_psnr_between_directories(pred_dir: Path, target_dir: Path) -> float:
     """
     Computes PSNR between the image pairs under two directories.
     """
-    psnr = torchmetrics.PeakSignalNoiseRatio().cuda()
+    psnr = PeakSignalNoiseRatio(data_range=1.0)
     return compute_metric_between_directories(pred_dir, target_dir, psnr)
 
 @torch.no_grad()
@@ -39,12 +42,12 @@ def compute_ssim_between_directories(pred_dir: Path, target_dir: Path) -> float:
     """
     Computes SSIM between the image pairs under two directories.
     """
-    ssim = torchmetrics.StructuralSimilarityIndexMeasure().cuda()
+    ssim = StructuralSimilarityIndexMeasure()
     return compute_metric_between_directories(pred_dir, target_dir, ssim)
 
 @torch.no_grad()
 def compute_metric_between_directories(
-    pred_dir: Path, target_dir: Path, metric_func: Callable, batch_size: int = 32,
+    pred_dir: Path, target_dir: Path, metric_func: Callable, batch_size: int = 128,
 ) -> float:
     """
     Evaluates the given metric between the image pairs under two directories.
@@ -62,11 +65,8 @@ def compute_metric_between_directories(
     # load images
     for file1 in pred_dir.iterdir():
 
-        if file1.suffix not in [".png", ".jpg", ".jpeg"]:
-            continue
-
         file2 = target_dir / file1.name
-        assert file2.exists(), f"File not found: {str(file2)}"
+        assert file2.exists(), f"Expected a file with the same name under {target_dir}"
 
         # load images
         pred = Image.open(file1)
@@ -100,8 +100,8 @@ def compute_metric_between_directories(
         target_set = target_set[..., :3] * target_set[..., -1:] + (1.0 - target_set[..., -1:])
 
     # convert to torch.Tensor
-    pred_set = torch.from_numpy(pred_set).permute(0, 3, 1, 2).cuda()
-    target_set = torch.from_numpy(target_set).permute(0, 3, 1, 2).cuda()
+    pred_set = torch.from_numpy(pred_set).permute(0, 3, 1, 2)
+    target_set = torch.from_numpy(target_set).permute(0, 3, 1, 2)
     assert len(pred_set) == len(target_set), (
         f"Expected two datasets to have the same size. Got {len(pred_set)} and {len(target_set)} images."
     )
