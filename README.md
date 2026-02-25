@@ -221,7 +221,7 @@ Compile the following files as a **ZIP** file named `{STUDENT_ID}.zip` and submi
 Otherwise, you will receive up to 20 points from this assignment that count toward your final grade. Your submissions will be graded based on the average metrics calculated across the four scenes.
 
 | Evaluation Criterion | LPIPS (AVG) (↓) | PSNR (AVG) (↑) | 
-|---|---|---|---|
+|---|---|---|
 | **Success Condition \(100%\)** | 0.065 | 22.000 |
 | **Success Condition \(50%)**   | 0.080 | 20.000 |
 
