@@ -3,7 +3,7 @@
     Gaussian Splatting: Point-Based Radiance Fields
   </h1>
   <p>
-    <a href=https://mhsung.github.io/kaist-cs479-spring-2025/ target="_blank"><b>KAIST CS479: Machine Learning for 3D Data</b></a><br>
+    <a href=https://3dml.kaist.ac.kr/ target="_blank"><b>KAIST CS479: Machine Learning for 3D Data</b></a><br>
     Programming Assignment 3
   </p>
 </div>
@@ -186,7 +186,7 @@ To evaluate the results, run the following command:
 ```
 python evaluate.py
 ```  
-This will create a file named `metrics.csv` in the current directory, which will be used for grading.
+This will create a file named `{STUDENT_ID}.txt` in the current directory, which will be used for grading.
 
 For reference, our implementation produces the following metrics:
 | Scene     | LPIPS (↓)    | PSNR (↑)    | SSIM (↑)    |
@@ -205,7 +205,7 @@ Compile the following files as a **ZIP** file named `{STUDENT_ID}.zip` and submi
   
 - The entire project directory containing every source code file;
 - A folder named `{STUDENT_ID}` with four subdirectories containing the rendered images (`.png` files) used for evaluation;
-- A CSV named `evaluation.csv` containing the evaluation metrics from the `evaluate.py` script.
+- A CSV named `{STUDENT_ID}.txt` containing the evaluation metrics from the `evaluate.py` script.
 
 ## Grading
 
@@ -218,14 +218,14 @@ Compile the following files as a **ZIP** file named `{STUDENT_ID}.zip` and submi
 
 **Your score will incur a 10% deduction for each missing item in the [What to Submit](#what-to-submit) section.**
 
-Otherwise, you will receive up to 30 points from this assignment that count toward your final grade. Your submissions will be graded based on the average metrics calculated across the four scenes.
+Otherwise, you will receive up to 20 points from this assignment that count toward your final grade. Your submissions will be graded based on the average metrics calculated across the four scenes.
 
 | Evaluation Criterion | LPIPS (AVG) (↓) | PSNR (AVG) (↑) | SSIM (AVG) (↑) |
 |---|---|---|---|
 | **Success Condition \(100%\)** | 0.065 | 22.000 | 0.900 |
 | **Success Condition \(50%)**   | 0.080 | 20.000 | 0.850 |
 
-As shown in the table above, each evaluation metric is assigned up to 10 points. In particular,
+As shown in the table above, each evaluation metric is assigned up to 6/7/7 points. In particular,
 - **LPIPS (AVG)**
   - You will receive 6 points if the reported value is equal to or, *smaller* than the success condition \(100%)\;
   - Otherwise, you will receive 3 points if the reported value is equal to or, *smaller* than the success condition \(50%)\.
