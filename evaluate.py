@@ -41,33 +41,32 @@ def main() -> None:
         metrics["scene"] = scene_type
         metrics["lpips"] = compute_lpips_between_directories(out_dir, ref_dir)
         metrics["psnr"] = compute_psnr_between_directories(out_dir, ref_dir)
-        metrics["ssim"] = compute_ssim_between_directories(out_dir, ref_dir)
+        #metrics["ssim"] = compute_ssim_between_directories(out_dir, ref_dir)
 
         lpips_avg += metrics["lpips"]
         psnr_avg += metrics["psnr"]
-        ssim_avg += metrics["ssim"]
+        #ssim_avg += metrics["ssim"]
 
         metrics_list.append(metrics)
 
     # Compute average
     lpips_avg /= len(scene_types)
     psnr_avg /= len(scene_types)
-    ssim_avg /= len(scene_types)
+    #ssim_avg /= len(scene_types)
     metrics_list.append({
         "scene": "average",
         "lpips": lpips_avg,
         "psnr": psnr_avg,
-        "ssim": ssim_avg
     })
 
     # Save metrics to CSV
     print(f"LPIPS: {lpips_avg:.4f}")
     print(f"PSNR: {psnr_avg:.4f}")
-    print(f"SSIM: {ssim_avg:.4f}")
+    # print(f"SSIM: {ssim_avg:.4f}")
 
     # Save metrics to evaluation.txt (comma-separated: LPIPS, PSNR, SSIM)
     with open("evaluation.txt", "w") as f:
-        f.write(f"{lpips_avg:.4f}, {psnr_avg:.4f}, {ssim_avg:.4f}")
+        f.write(f"{lpips_avg:.4f}, {psnr_avg:.4f}")
     print("Done.")
 
 

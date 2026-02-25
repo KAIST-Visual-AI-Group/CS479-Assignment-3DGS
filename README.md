@@ -189,13 +189,13 @@ python evaluate.py
 This will create a file named `{STUDENT_ID}.txt` in the current directory, which will be used for grading.
 
 For reference, our implementation produces the following metrics:
-| Scene     | LPIPS (↓)    | PSNR (↑)    | SSIM (↑)    |
-|-----------|--------------|-------------|-------------|
-| Chair     |    0.037     |    27.043   |    0.953    |
-| Lego      |    0.047     |    25.723   |    0.939    |
-| Materials |    0.043     |    25.014   |    0.937    |
-| Drums     |    0.079     |    21.583   |    0.896    |
-| Average   |    0.052     |    24.841   |    0.931    |
+| Scene     | LPIPS (↓)    | PSNR (↑)    |
+|-----------|--------------|-------------|
+| Chair     |    0.037     |    27.043   |
+| Lego      |    0.047     |    25.723   |
+| Materials |    0.043     |    25.014   |
+| Drums     |    0.079     |    21.583   |
+| Average   |    0.052     |    24.841   |
 
 > :bulb: **For details on grading, refer to section [Grading](#grading).**
 
@@ -220,21 +220,18 @@ Compile the following files as a **ZIP** file named `{STUDENT_ID}.zip` and submi
 
 Otherwise, you will receive up to 20 points from this assignment that count toward your final grade. Your submissions will be graded based on the average metrics calculated across the four scenes.
 
-| Evaluation Criterion | LPIPS (AVG) (↓) | PSNR (AVG) (↑) | SSIM (AVG) (↑) |
+| Evaluation Criterion | LPIPS (AVG) (↓) | PSNR (AVG) (↑) | 
 |---|---|---|---|
-| **Success Condition \(100%\)** | 0.065 | 22.000 | 0.900 |
-| **Success Condition \(50%)**   | 0.080 | 20.000 | 0.850 |
+| **Success Condition \(100%\)** | 0.065 | 22.000 |
+| **Success Condition \(50%)**   | 0.080 | 20.000 |
 
-As shown in the table above, each evaluation metric is assigned up to 6/7/7 points. In particular,
+As shown in the table above, each evaluation metric is assigned up to 10 points. In particular,
 - **LPIPS (AVG)**
-  - You will receive 6 points if the reported value is equal to or, *smaller* than the success condition \(100%)\;
-  - Otherwise, you will receive 3 points if the reported value is equal to or, *smaller* than the success condition \(50%)\.
+  - You will receive 10 points if the reported value is equal to or, *smaller* than the success condition \(100%)\;
+  - Otherwise, you will receive 5 points if the reported value is equal to or, *smaller* than the success condition \(50%)\.
 - **PSNR (AVG)**
-  - You will receive 7 points if the reported value is equal to or, *greater* than the success condition \(100%)\;
-  - Otherwise, you will receive 3.5 points if the reported value is equal to or, *greater* than the success condition \(50%)\.
-- **SSIM (AVG)**
-  - You will receive 7 points if the reported value is equal to or, *greater* than the success condition \(100%)\;
-  - Otherwise, you will receive 3.5 points if the reported value is equal to or, *greater* than the success condition \(50%)\.
+  - You will receive 10 points if the reported value is equal to or, *greater* than the success condition \(100%)\;
+  - Otherwise, you will receive 5 points if the reported value is equal to or, *greater* than the success condition \(50%)\.
 
 ## Reference
 
