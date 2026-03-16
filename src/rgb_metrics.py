@@ -17,6 +17,8 @@ from torchmetrics.image import (
     StructuralSimilarityIndexMeasure,
 )
 
+IMAGE_SUFFIXES = {".png"}
+
 
 @torch.no_grad()
 def compute_lpips_between_directories(pred_dir: Path, target_dir: Path) -> float:
@@ -61,9 +63,14 @@ def compute_metric_between_directories(
 
     pred_set = []
     target_set = []
+    pred_files = sorted(
+        file for file in pred_dir.iterdir()
+        if file.is_file() and file.suffix.lower() in IMAGE_SUFFIXES
+    )
+    assert pred_files, f"No image files found under {pred_dir}"
 
     # load images
-    for file1 in pred_dir.iterdir():
+    for file1 in pred_files:
 
         file2 = target_dir / file1.name
         assert file2.exists(), f"Expected a file with the same name under {target_dir}"

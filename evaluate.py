@@ -4,7 +4,6 @@ evaluate.py
 A script for evaluating the quality of rendered images.
 """
 
-import csv
 from pathlib import Path
 
 from tqdm import tqdm
@@ -27,7 +26,6 @@ def main() -> None:
 
     lpips_avg = 0.0
     psnr_avg = 0.0
-    ssim_avg = 0.0
 
     for scene_type in tqdm(scene_types):
         metrics = {}
@@ -64,9 +62,14 @@ def main() -> None:
     print(f"PSNR: {psnr_avg:.4f}")
     # print(f"SSIM: {ssim_avg:.4f}")
 
-    # Save metrics to evaluation.txt (comma-separated: LPIPS, PSNR, SSIM)
+    # Save per-scene metrics and averages to evaluation.txt
     with open("evaluation.txt", "w") as f:
-        f.write(f"{lpips_avg:.4f}, {psnr_avg:.4f}")
+        for metrics in metrics_list:
+            f.write(
+                f"scene: {metrics['scene']}, "
+                f"lpips: {metrics['lpips']:.4f}, "
+                f"psnr: {metrics['psnr']:.4f}\n"
+            )
     print("Done.")
 
 

@@ -89,8 +89,8 @@ data
 ```
 
 ### IMPORTANT NOTE!
-For this year, we use google colab. upload your own project folder (including submodule and dataset), then setting up your environment and running your rendering and evaluation in colab. 
-For the environment setup and running, please refer `3DGS_inference.ipynb` file. 
+For this year, we use jupyter notebook. Please upload your own project folder (including submodule and dataset), then setting up your environment and running your rendering and evaluation in notebook file. 
+For the environment setup and running, please refer `3DGS_inference.ipynb`. 
 
 ## Tasks
 
@@ -211,7 +211,7 @@ Compile the following files as a **ZIP** file named `{STUDENT_ID}.zip` and submi
 
 **You will receive a zero score if:**
 - **you do not submit,**
-- **your code is not executable in the google colab after setting environment we provided, or**
+- **your code is not executable in the Kcloud after setting environment we provided, or**
 - **you modify any code outside of the section marked with `TODO`.**
   
 **Plagiarism in any form will also result in a zero score and will be reported to the university.**
