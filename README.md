@@ -71,6 +71,10 @@ To get started, clone this repository first.
 ```
 git clone --recursive https://github.com/KAIST-Visual-AI-Group/CS479-Assignment-3DGS
 ```
+**Important Note:**  
+> If Git LFS fails due to the repository bandwidth limit, please download the scene files (`data.zip`) from the alternative link below. After extracting the file, place the contents according to the project directory structure described above.
+>
+> [Download data.zip](https://drive.google.com/file/d/14YVFRR-8L8UVR_UXOe_W-ogNs0IM0572/view?usp=sharing)
 
 This Repository also contains all datas & optimized 3DGS file to complete assignment. 
 Please check whether `data` directory is structured as follows:
